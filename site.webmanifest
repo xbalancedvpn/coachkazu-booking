@@ -10,7 +10,7 @@
   "theme_color": "#070707",
   "icons": [
     {
-      "src": "assets/coach-kazu-favicon.svg",
+      "src": "assets/coach-kazu-favicon.webp",
       "sizes": "128x128",
       "type": "image/webp",
       "purpose": "any"
