@@ -1,0 +1,50 @@
+(() => {
+const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
+const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s);
+const skills=[['serve','Serve'],['return_score','Return'],['forehand','Forehand'],['backhand','Backhand'],['dinking','Dinking'],['footwork','Footwork'],['positioning','Positioning'],['consistency','Consistency'],['strategy','Strategy'],['confidence','Confidence']];
+let current={client:null,assessments:[],blob:null};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const avg=a=>{const xs=skills.map(([k])=>Number(a?.[k])).filter(n=>n>=1&&n<=5);return xs.length?xs.reduce((x,y)=>x+y,0)/xs.length:0};
+const label=n=>n>=4.5?'Excellent':n>=3.8?'Strong':n>=3?'Developing':n>0?'Building':'Not rated';
+function toast(msg){const t=$('#toast');if(!t)return alert(msg);t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200)}
+function trend(latest,previous){if(!previous)return {text:'Baseline',cls:'trend-flat',delta:0};const d=avg(latest)-avg(previous);return Math.abs(d)<.05?{text:'Stable',cls:'trend-flat',delta:d}:d>0?{text:`+${d.toFixed(1)} improved`,cls:'trend-up',delta:d}:{text:`${d.toFixed(1)} change`,cls:'trend-down',delta:d}}
+async function resolveClient(){const name=$('#clientName')?.textContent?.trim();if(!name||name==='Client')return null;const {data,error}=await db.from('clients').select('*').eq('full_name',name).eq('is_active',true).limit(1);if(error||!data?.length)return null;return data[0]}
+async function fetchAssessments(id){const {data,error}=await db.from('progress_assessments').select('*').eq('client_id',id).order('assessment_date',{ascending:false}).order('created_at',{ascending:false}).limit(30);if(error)throw error;return data||[]}
+function insightHtml(a){if(!a.length)return '';const latest=a[0],prev=a[1],overall=avg(latest),t=trend(latest,prev),rated=skills.map(([k,l])=>({k,l,v:Number(latest[k]||0)})).filter(x=>x.v>0).sort((x,y)=>y.v-x.v),best=rated[0],focus=[...rated].sort((x,y)=>x.v-y.v)[0];return `<div class="progress-insight"><div class="progress-insight-head"><div><span>Current overall</span><strong>${overall?overall.toFixed(1):'—'}/5</strong></div><span class="${t.cls}">${esc(t.text)}</span></div><div class="progress-insight-grid"><div><small>Level</small><b>${label(overall)}</b></div><div><small>Strongest area</small><b>${esc(best?.l||'Not rated')}</b></div><div><small>Next focus</small><b>${esc(focus?.l||'Not rated')}</b></div></div></div>`}
+async function refreshInsight(){try{const c=await resolveClient();if(!c)return;const a=await fetchAssessments(c.id),panel=$('#clientProgress');if(!panel)return;panel.querySelector('.progress-insight')?.remove();if(a.length)panel.insertAdjacentHTML('afterbegin',insightHtml(a))}catch(e){console.warn(e)}}
+function rounded(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.closePath()}
+const brandImageCache=new Map();
+function loadBrandImage(src){if(brandImageCache.has(src))return brandImageCache.get(src);const p=new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Could not load branding asset.'));img.src=src});brandImageCache.set(src,p);return p}
+function drawContained(ctx,img,x,y,w,h){const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight),dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh)}
+function fitText(ctx,text,maxWidth,startSize,minSize=24){let s=startSize;while(s>minSize){ctx.font=`900 ${s}px Arial`;if(ctx.measureText(text).width<=maxWidth)return s;s-=2}return minSize}
+async function drawCard(client,arr){const canvas=$('#progressCardCanvas'),ctx=canvas.getContext('2d'),latest=arr[0],prev=arr[1],overall=avg(latest),t=trend(latest,prev);ctx.clearRect(0,0,1080,1350);ctx.fillStyle='#070707';ctx.fillRect(0,0,1080,1350);const g=ctx.createLinearGradient(0,0,1080,1350);g.addColorStop(0,'rgba(255,214,0,.18)');g.addColorStop(.45,'rgba(255,214,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,1080,1350);ctx.fillStyle='#FFD600';ctx.fillRect(0,0,1080,18);const [wordmark,mainLogo]=await Promise.all([loadBrandImage('assets/coach-kazu-wordmark.svg?v=1'),loadBrandImage('assets/coach-kazu-main.svg?v=1')]);drawContained(ctx,wordmark,72,42,360,86);drawContained(ctx,mainLogo,900,32,108,108);ctx.fillStyle='#fff';const nameSize=fitText(ctx,client.full_name.toUpperCase(),930,66,36);ctx.font=`900 ${nameSize}px Arial`;ctx.fillText(client.full_name.toUpperCase(),72,205);ctx.fillStyle='#a7a7a7';ctx.font='700 22px Arial';ctx.fillText(`PLAYER PROGRESS • ${latest.assessment_date}`,72,247);
+rounded(ctx,72,292,936,150,28);ctx.fillStyle='#111';ctx.fill();ctx.fillStyle='#8f8f8f';ctx.font='700 18px Arial';ctx.fillText('CURRENT OVERALL',104,337);ctx.fillStyle='#FFD600';ctx.font='900 64px Arial';ctx.fillText(`${overall.toFixed(1)}/5`,104,405);ctx.fillStyle=t.delta>0?'#8cffab':t.delta<0?'#ff9c9c':'#dedede';ctx.font='900 23px Arial';ctx.fillText(t.text.toUpperCase(),355,390);ctx.fillStyle='#8f8f8f';ctx.font='700 17px Arial';ctx.fillText(label(overall).toUpperCase(),355,419);
+let y=500;ctx.font='900 20px Arial';for(const [k,l] of skills){const v=Number(latest[k]||0);ctx.fillStyle='#d7d7d7';ctx.fillText(l.toUpperCase(),72,y+12);rounded(ctx,300,y-9,620,24,12);ctx.fillStyle='#222';ctx.fill();if(v>0){rounded(ctx,300,y-9,620*(v/5),24,12);ctx.fillStyle='#FFD600';ctx.fill()}ctx.fillStyle='#fff';ctx.font='900 20px Arial';ctx.fillText(v?`${v}/5`:'—',944,y+12);ctx.font='900 20px Arial';y+=62}
+const rated=skills.map(([k,l])=>({l,v:Number(latest[k]||0)})).filter(x=>x.v>0);const best=[...rated].sort((a,b)=>b.v-a.v)[0],focus=[...rated].sort((a,b)=>a.v-b.v)[0];y=1140;rounded(ctx,72,y,936,118,24);ctx.fillStyle='#101010';ctx.fill();ctx.fillStyle='#888';ctx.font='700 16px Arial';ctx.fillText('STRONGEST',102,y+34);ctx.fillText('NEXT FOCUS',410,y+34);ctx.fillText('ASSESSMENT',715,y+34);ctx.fillStyle='#fff';ctx.font='900 22px Arial';ctx.fillText(best?.l||'Not rated',102,y+72);ctx.fillText(focus?.l||'Not rated',410,y+72);ctx.fillText(String(latest.assessment_type||'session').toUpperCase(),715,y+72);ctx.fillStyle='#5d5d5d';ctx.font='700 15px Arial';ctx.fillText('Progress is based on Coach Kazu skill assessments. Contact and payment details are never shown.',72,1288);ctx.textAlign='center';ctx.fillStyle='#666';ctx.font='700 13px Arial';ctx.fillText('© 2026 XBALANCED DIGITAL SOLUTIONS',540,1324);ctx.textAlign='left';return canvas}
+async function buildProgressCard(){const btn=$('#shareProgressBtn');if(!btn)return;const old=btn.textContent;btn.disabled=true;btn.textContent='Preparing…';try{const client=await resolveClient();if(!client){alert('Client profile could not be found.');return}const assessments=await fetchAssessments(client.id);if(!assessments.length){alert('Add a progress assessment first before creating a progress card.');return}current.client=client;current.assessments=assessments;const canvas=await drawCard(client,assessments);current.blob=await new Promise(r=>canvas.toBlob(r,'image/png',1));if($('#clientDialog')?.open)$('#clientDialog').close();$('#progressCardDialog').showModal()}catch(e){console.error(e);alert(e.message||'Could not create the progress card.')}finally{btn.disabled=false;btn.textContent=old}}
+function fileName(){return `coach-kazu-${(current.client?.full_name||'player').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-progress.png`}
+function blobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Could not prepare image.'));r.readAsDataURL(blob)})}
+async function directSave(blob,name){
+  if(!blob)return false;
+  try{
+    const dataUrl=await blobToDataUrl(blob),a=document.createElement('a');
+    a.href=dataUrl;
+    a.download=name;
+    a.rel='noopener';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>a.remove(),1200);
+    toast('PNG download started.');
+    return true;
+  }catch(e){
+    console.warn(e);
+    toast('Direct download was blocked by this browser. Use Share instead.');
+    return false;
+  }
+}
+const closeProgressCard=()=>{$('#progressCardDialog').close();const cd=$('#clientDialog');if(cd&&!cd.open&&$('#clientName')?.textContent?.trim()&&$('#clientName').textContent.trim()!=='Client')cd.showModal()};$('#shareProgressBtn')?.addEventListener('click',buildProgressCard);$('#closeProgressCard')?.addEventListener('click',closeProgressCard);$('#closeProgressCardBottom')?.addEventListener('click',closeProgressCard);
+$('#downloadProgressCard')?.addEventListener('click',async()=>{if(!current.blob)return alert('Progress card is not ready yet.');await directSave(current.blob,fileName())});
+$('#shareProgressCardNative')?.addEventListener('click',async()=>{if(!current.blob)return;const file=new File([current.blob],fileName(),{type:'image/png'});if(navigator.canShare?.({files:[file]})){try{await navigator.share({title:`${current.client.full_name} - Coach Kazu Progress`,text:'Player progress update from Coach Kazu.',files:[file]});return}catch(e){if(e.name==='AbortError')return}}toast('Sharing is not supported here. Use Save PNG instead.')});
+const nameNode=$('#clientName');if(nameNode){new MutationObserver(()=>setTimeout(refreshInsight,250)).observe(nameNode,{childList:true,subtree:true,characterData:true})}document.addEventListener('click',e=>{if(e.target.closest?.('[data-client]'))setTimeout(refreshInsight,500)});
+})();
