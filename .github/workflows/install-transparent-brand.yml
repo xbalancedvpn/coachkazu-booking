@@ -1,0 +1,39 @@
+name: Install transparent Coach Kazu brand assets
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.brandtmp/**'
+      - '.github/workflows/install-transparent-brand.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build transparent brand assets
+        shell: bash
+        run: |
+          cat .brandtmp/main.part1 .brandtmp/main.part2 .brandtmp/main.part3 | base64 -d > assets/coach-kazu-main.webp
+          cat .brandtmp/wordmark.part1 .brandtmp/wordmark.part2 | base64 -d > assets/coach-kazu-wordmark.webp
+          cat .brandtmp/favicon.part1 .brandtmp/favicon.part2 | base64 -d > assets/coach-kazu-favicon.webp
+          file assets/coach-kazu-main.webp assets/coach-kazu-wordmark.webp assets/coach-kazu-favicon.webp
+
+      - name: Commit transparent brand assets
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/coach-kazu-main.webp assets/coach-kazu-wordmark.webp assets/coach-kazu-favicon.webp
+          if git diff --cached --quiet; then
+            echo "Brand assets already current."
+            exit 0
+          fi
+          git commit -m "Install transparent Coach Kazu brand assets"
+          git push
