@@ -1,0 +1,31 @@
+{
+  "id": "./",
+  "name": "Coach Kazu Pickleball Coaching",
+  "short_name": "Coach Kazu",
+  "description": "Coach Kazu pickleball coaching and booking in Santiago City.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070707",
+  "theme_color": "#070707",
+  "icons": [
+    {
+      "src": "assets/coach-kazu-favicon.svg",
+      "sizes": "128x128",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book a Session",
+      "short_name": "Book",
+      "url": "./#booking"
+    },
+    {
+      "name": "Admin",
+      "short_name": "Admin",
+      "url": "./admin.html"
+    }
+  ]
+}
