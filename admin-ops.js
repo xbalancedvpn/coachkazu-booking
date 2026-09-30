@@ -166,8 +166,14 @@ async function openConfirmationCard(id){
     const g=ctx.createLinearGradient(0,0,1080,1350);g.addColorStop(0,'rgba(255,214,0,.2)');g.addColorStop(.42,'rgba(255,214,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,1080,1350);
     ctx.fillStyle='#FFD600';ctx.fillRect(0,0,1080,18);
     try{
-      const logo=new Image();logo.src='assets/coach-kazu-main.webp?v=1';await logo.decode();
-      const scale=Math.min(300/logo.naturalWidth,180/logo.naturalHeight);ctx.drawImage(logo,72,50,logo.naturalWidth*scale,logo.naturalHeight*scale);
+      const wordmark=new Image(),brandIcon=new Image();
+      wordmark.src='assets/coach-kazu-wordmark.webp?v=2';
+      brandIcon.src='assets/coach-kazu-favicon.webp?v=2';
+      await Promise.all([wordmark.decode(),brandIcon.decode()]);
+      const ws=Math.min(370/wordmark.naturalWidth,92/wordmark.naturalHeight);
+      ctx.drawImage(wordmark,72,50,wordmark.naturalWidth*ws,wordmark.naturalHeight*ws);
+      const is=Math.min(96/brandIcon.naturalWidth,96/brandIcon.naturalHeight);
+      ctx.drawImage(brandIcon,912,46,brandIcon.naturalWidth*is,brandIcon.naturalHeight*is);
     }catch{}
     ctx.fillStyle='#FFD600';ctx.font='900 22px Arial';ctx.fillText('BOOKING CONFIRMATION',72,270);
     ctx.fillStyle='#fff';const fs=fitText(ctx,String(b.client_name||'CLIENT').toUpperCase(),930,62,34);ctx.font=`900 ${fs}px Arial`;ctx.fillText(String(b.client_name||'CLIENT').toUpperCase(),72,350);
