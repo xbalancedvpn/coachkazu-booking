@@ -167,8 +167,8 @@ async function openConfirmationCard(id){
     ctx.fillStyle='#FFD600';ctx.fillRect(0,0,1080,18);
     try{
       const wordmark=new Image(),brandIcon=new Image();
-      wordmark.src='assets/coach-kazu-wordmark.webp?v=2';
-      brandIcon.src='assets/coach-kazu-favicon.webp?v=2';
+      wordmark.src='assets/coach-kazu-wordmark.webp?v=3';
+      brandIcon.src='assets/coach-kazu-favicon.webp?v=3';
       await Promise.all([wordmark.decode(),brandIcon.decode()]);
       const ws=Math.min(370/wordmark.naturalWidth,92/wordmark.naturalHeight);
       ctx.drawImage(wordmark,72,50,wordmark.naturalWidth*ws,wordmark.naturalHeight*ws);
