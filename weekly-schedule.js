@@ -1,0 +1,62 @@
+(() => {
+const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
+const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s);
+const START_HOUR=10,END_HOUR=23,DAYS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
+let state={monday:null,sunday:null,rows:[],blob:null,counts:{available:0,booked:0,unavailable:0,past:0}};
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseDate=s=>new Date(`${s}T12:00:00`);
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const mondayOf=d=>{const x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+const hourName=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`;
+const hourRange=h=>`${hourName(h)} – ${hourName(h+1)}`;
+const dateLabel=d=>d.toLocaleDateString('en-PH',{month:'short',day:'numeric'});
+const rangeLabel=(a,b)=>`${a.toLocaleDateString('en-PH',{month:'long',day:'numeric'})} – ${b.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}`;
+function toast(msg){const t=$('#toast');if(!t)return alert(msg);t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200)}
+function rounded(ctx,x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else{ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r)}ctx.closePath()}
+const brandImageCache=new Map();
+function loadBrandImage(src){if(brandImageCache.has(src))return brandImageCache.get(src);const p=new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Could not load branding asset.'));img.src=src});brandImageCache.set(src,p);return p}
+function drawContained(ctx,img,x,y,w,h){const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight),dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh)}
+function setWeek(d){const m=mondayOf(d),s=addDays(m,6);state.monday=m;state.sunday=s;$('#weeklyStart').value=ymd(m);$('#weeklyRange').textContent=`Monday–Sunday • ${rangeLabel(m,s)}`}
+function slotKey(date,h){return `${date}|${h}`}
+function isPast(date,h){const x=new Date(`${date}T${pad(h)}:00:00`);return x.getTime()<=Date.now()}
+function privacyStatus(map,date,h){if(isPast(date,h))return 'past';const raw=map.get(slotKey(date,h));if(raw==='booked')return 'booked';if(raw==='unavailable')return 'unavailable';return 'available'}
+async function fetchWeek(){const start=ymd(state.monday),end=ymd(state.sunday);const {data,error}=await db.from('public_schedule').select('slot_date,start_hour,status').gte('slot_date',start).lte('slot_date',end);if(error)throw error;return data||[]}
+async function drawCard(rows){const canvas=$('#weeklyScheduleCanvas'),ctx=canvas.getContext('2d');canvas.width=1800;canvas.height=1350;ctx.clearRect(0,0,1800,1350);ctx.fillStyle='#070707';ctx.fillRect(0,0,1800,1350);const glow=ctx.createLinearGradient(0,0,1200,700);glow.addColorStop(0,'rgba(255,214,0,.17)');glow.addColorStop(.55,'rgba(255,214,0,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,1800,700);ctx.fillStyle='#FFD600';ctx.fillRect(0,0,1800,18);
+const [mainLogo,wordmark]=await Promise.all([loadBrandImage('assets/coach-kazu-main.svg?v=1'),loadBrandImage('assets/coach-kazu-wordmark.svg?v=1')]);drawContained(ctx,mainLogo,72,34,118,118);drawContained(ctx,wordmark,208,48,365,82);ctx.fillStyle='#fff';ctx.font='900 58px Arial';ctx.fillText('WEEKLY COACHING AVAILABILITY',72,190);ctx.fillStyle='#b5b5b5';ctx.font='700 24px Arial';ctx.fillText(`MONDAY – SUNDAY  •  ${rangeLabel(state.monday,state.sunday).toUpperCase()}`,72,232);ctx.fillStyle='#777';ctx.font='700 18px Arial';ctx.fillText('Santiago City • Coaching hours 10:00 AM – 11:00 PM',72,268);
+const map=new Map(rows.map(r=>[slotKey(r.slot_date,Number(r.start_hour)),r.status]));const left=70,top=315,totalW=1660,timeW=245,dayW=(totalW-timeW)/7,headerH=78,rowH=61;
+rounded(ctx,left,top,totalW,headerH+rowH*(END_HOUR-START_HOUR),22);ctx.fillStyle='#0d0d0d';ctx.fill();ctx.strokeStyle='#292929';ctx.lineWidth=2;ctx.stroke();
+ctx.fillStyle='#171717';ctx.fillRect(left,top,timeW,headerH);ctx.fillStyle='#909090';ctx.font='900 17px Arial';ctx.textAlign='center';ctx.fillText('TIME',left+timeW/2,top+47);
+for(let d=0;d<7;d++){const date=addDays(state.monday,d),x=left+timeW+d*dayW;ctx.fillStyle=d%2?'#111':'#141414';ctx.fillRect(x,top,dayW,headerH);ctx.fillStyle='#FFD600';ctx.font='900 21px Arial';ctx.fillText(DAYS[d],x+dayW/2,top+31);ctx.fillStyle='#aaa';ctx.font='700 16px Arial';ctx.fillText(date.toLocaleDateString('en-PH',{month:'short',day:'numeric'}).toUpperCase(),x+dayW/2,top+57)}
+let counts={available:0,booked:0,unavailable:0,past:0};for(let r=0,h=START_HOUR;h<END_HOUR;h++,r++){const y=top+headerH+r*rowH;ctx.fillStyle=r%2?'#0b0b0b':'#0e0e0e';ctx.fillRect(left,y,timeW,rowH);ctx.fillStyle='#bcbcbc';ctx.font='800 15px Arial';ctx.fillText(hourRange(h),left+timeW/2,y+37);for(let d=0;d<7;d++){const date=ymd(addDays(state.monday,d)),st=privacyStatus(map,date,h),x=left+timeW+d*dayW;counts[st]++;ctx.fillStyle=st==='available'?'#12361f':st==='booked'?'#3b1717':st==='unavailable'?'#3b2c0d':'#171717';ctx.fillRect(x+4,y+4,dayW-8,rowH-8);ctx.fillStyle=st==='available'?'#9ff0b5':st==='booked'?'#ff9b9b':st==='unavailable'?'#ffd56e':'#666';ctx.font='900 14px Arial';ctx.fillText(st==='available'?'AVAILABLE':st==='booked'?'BOOKED':st==='unavailable'?'COACH OFF':'PAST',x+dayW/2,y+36)}}
+ctx.strokeStyle='#222';ctx.lineWidth=1;for(let i=0;i<=7;i++){const x=left+timeW+i*dayW;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,top+headerH+rowH*(END_HOUR-START_HOUR));ctx.stroke()}for(let i=0;i<=(END_HOUR-START_HOUR);i++){const y=top+headerH+i*rowH;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(left+totalW,y);ctx.stroke()}
+ctx.textAlign='left';const footY=1262;ctx.fillStyle='#86df9d';ctx.beginPath();ctx.arc(76,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddd';ctx.font='800 17px Arial';ctx.fillText('Available',94,footY-2);ctx.fillStyle='#e28d8d';ctx.beginPath();ctx.arc(245,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddd';ctx.fillText('Booked',263,footY-2);ctx.fillStyle='#d6a84f';ctx.beginPath();ctx.arc(390,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddd';ctx.fillText('Coach Unavailable',408,footY-2);ctx.fillStyle='#555';ctx.beginPath();ctx.arc(625,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#999';ctx.fillText('Past',643,footY-2);ctx.fillStyle='#777';ctx.font='700 15px Arial';ctx.fillText('Privacy-safe: client names and booking details are never shown.',780,footY-2);ctx.fillStyle='#FFD600';ctx.font='900 19px Arial';ctx.fillText('BOOK: coachkyle.xbalanced.net',72,1312);ctx.fillStyle='#777';ctx.font='700 15px Arial';ctx.fillText('Availability may change. Final schedule is confirmed by Coach Kazu.',1260,1292);ctx.textAlign='center';ctx.fillStyle='#5f5f5f';ctx.font='700 13px Arial';ctx.fillText('© 2026 XBALANCED DIGITAL SOLUTIONS',900,1326);ctx.textAlign='left';
+state.counts=counts;return canvas}
+async function generate(){const btn=$('#generateWeeklySchedule'),old=btn.textContent;btn.disabled=true;btn.textContent='Generating…';try{const picked=$('#weeklyStart').value;if(picked)setWeek(parseDate(picked));state.rows=await fetchWeek();const canvas=await drawCard(state.rows);state.blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',1));$('#weeklySummary').innerHTML=`<strong>${state.counts.available}</strong> available • ${state.counts.booked} booked • ${state.counts.unavailable} coach unavailable • ${state.counts.past} past`;$('#weeklyScheduleDialog').showModal()}catch(e){console.error(e);toast(e.message||'Could not generate weekly schedule.')}finally{btn.disabled=false;btn.textContent=old}}
+function fileName(){return `coach-kazu-weekly-schedule-${ymd(state.monday)}-to-${ymd(state.sunday)}.png`}
+function blobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Could not prepare image.'));r.readAsDataURL(blob)})}
+async function directSave(blob,name){
+  if(!blob)return false;
+  try{
+    const dataUrl=await blobToDataUrl(blob),a=document.createElement('a');
+    a.href=dataUrl;
+    a.download=name;
+    a.rel='noopener';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>a.remove(),1200);
+    toast('PNG download started.');
+    return true;
+  }catch(e){
+    console.warn(e);
+    toast('Direct download was blocked by this browser. Use Share instead.');
+    return false;
+  }
+}
+async function shareCard(){if(!state.blob)return;const file=new File([state.blob],fileName(),{type:'image/png'}),text=`Coach Kazu weekly coaching availability • ${rangeLabel(state.monday,state.sunday)}
+Book: https://coachkyle.xbalanced.net`;if(navigator.canShare?.({files:[file]})){try{await navigator.share({title:'Coach Kazu Weekly Schedule',text,files:[file]});return}catch(e){if(e?.name==='AbortError')return}}toast('Sharing is not supported here. Use Save PNG instead.')}
+function shiftWeek(n){const base=$('#weeklyStart').value?parseDate($('#weeklyStart').value):new Date();setWeek(addDays(mondayOf(base),n*7))}
+function init(){const input=$('#weeklyStart');if(!input)return;setWeek(new Date());input.addEventListener('change',()=>{if(input.value)setWeek(parseDate(input.value))});$('#prevWeek').onclick=()=>shiftWeek(-1);$('#thisWeek').onclick=()=>setWeek(new Date());$('#nextWeek').onclick=()=>shiftWeek(1);$('#generateWeeklySchedule').onclick=generate;$('#quickWeeklyScheduleBtn')?.addEventListener('click',async()=>{setWeek(new Date());await generate()});$('#closeWeeklySchedule').onclick=()=>$('#weeklyScheduleDialog').close();$('#closeWeeklyScheduleBottom').onclick=()=>$('#weeklyScheduleDialog').close();$('#saveWeeklySchedule').onclick=async()=>{if(!state.blob)return toast('Generate the weekly schedule first.');await directSave(state.blob,fileName())};$('#shareWeeklySchedule').onclick=shareCard}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
