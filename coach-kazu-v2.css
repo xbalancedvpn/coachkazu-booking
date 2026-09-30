@@ -312,3 +312,40 @@ pointer-events:none}
   .hero-slogan{font-size:20px}
   .site-brand img{max-width:145px}
 }
+
+/* =========================================================
+   COACH KAZU LOGO PLACEMENT FIX v31
+   Uses the approved three-logo system:
+   main crest / horizontal wordmark / CK favicon.
+   ========================================================= */
+.site-brand{display:flex!important;align-items:center!important;justify-content:flex-start!important;min-width:210px!important}
+.site-brand img{display:block!important;width:auto!important;height:auto!important;max-width:220px!important;max-height:48px!important;object-fit:contain!important;object-position:left center!important;filter:drop-shadow(0 5px 10px rgba(0,0,0,.28))}
+.hero-logo-frame{display:flex!important;align-items:center!important;justify-content:center!important;padding:18px!important}
+.hero-logo-frame .hero-photo{width:min(100%,540px)!important;height:auto!important;max-height:520px!important;object-fit:contain!important;object-position:center!important;padding:0!important;background:transparent!important;filter:drop-shadow(0 24px 34px rgba(0,0,0,.55)) saturate(1.04)!important}
+.coach-brand-card{min-height:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:34px;border-radius:18px;background:
+radial-gradient(circle at 50% 40%,rgba(245,179,1,.10),transparent 50%),
+linear-gradient(145deg,#121212,#080808);border:1px solid rgba(245,179,1,.18);box-shadow:var(--kz-shadow);overflow:hidden}
+.coach-brand-main{display:block;width:min(100%,360px);height:auto;max-height:320px;object-fit:contain;filter:drop-shadow(0 20px 28px rgba(0,0,0,.45))}
+.coach-brand-wordmark{display:block;width:min(82%,310px);height:auto;max-height:80px;object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
+.footer-brand img{display:block!important;width:auto!important;height:auto!important;max-width:210px!important;max-height:48px!important;object-fit:contain!important}
+.footer-brand{gap:14px!important}
+@media(max-width:900px){
+  .site-brand{min-width:170px!important}
+  .site-brand img{max-width:180px!important;max-height:42px!important}
+  .hero-logo-frame .hero-photo{max-width:460px!important;max-height:440px!important}
+}
+@media(max-width:760px){
+  .site-brand{min-width:0!important;max-width:155px!important}
+  .site-brand img{max-width:155px!important;max-height:35px!important}
+  .hero-logo-frame{padding:6px 12px 0!important}
+  .hero-logo-frame .hero-photo{max-width:360px!important;max-height:330px!important}
+  .coach-brand-card{min-height:300px!important;padding:22px!important}
+  .coach-brand-main{max-width:250px!important;max-height:230px!important}
+  .coach-brand-wordmark{max-width:240px!important}
+  .footer-brand img{max-width:185px!important;max-height:44px!important}
+}
+@media(max-width:430px){
+  .site-brand{max-width:142px!important}
+  .site-brand img{max-width:142px!important;max-height:32px!important}
+  .hero-logo-frame .hero-photo{max-width:300px!important;max-height:280px!important}
+}
