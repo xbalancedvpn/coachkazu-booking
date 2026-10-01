@@ -1,6 +1,6 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
-const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)];
 let activeInquiry=null,activePaymentBooking=null,activeClient=null,paymentTotals=new Map(),clientCache=[],listPreviewState={upcoming:false,past:false,payment:false,completed:false,clients:false};
 const LIST_PREVIEW_LIMIT=3;
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,hour=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`,shortHour=h=>`${h%12||12}${h<12?'am':'pm'}`;
@@ -62,7 +62,7 @@ function wasCompletedEarly(b){
   const closedHour=closed.getHours()+(closed.getMinutes()/60);
   return closedHour<Number(b.end_hour||0);
 }
-function showAdmin(session){$('#loginView').classList.add('hidden');$('#adminView').classList.remove('hidden');$('#adminEmail').textContent=session.user.email||'';$('#scheduleDate').value=ymd(new Date());buildSkillFields();loadAll()}
+function showAdmin(session){$('#loginView').classList.add('hidden');$('#adminView').classList.remove('hidden');$('#adminEmail').textContent=session.user.email||'';$('#scheduleDate').value=ymd(new Date());buildSkillFields();Promise.resolve(loadAll()).finally(()=>window.dispatchEvent(new CustomEvent('coach:admin-ready',{detail:{email:session.user.email||''}})))}
 function showLogin(){$('#adminView').classList.add('hidden');$('#loginView').classList.remove('hidden')}
 async function init(){const {data:{session}}=await db.auth.getSession();session?showAdmin(session):showLogin()}
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').textContent='';const {data,error}=await db.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#password').value});if(error)return $('#loginError').textContent=error.message;showAdmin(data.session)});
@@ -210,6 +210,7 @@ async function loadInquiries(){
   if(error)return $('#inquiries').innerHTML=`<div class="empty">${esc(error.message)}</div>`;
   const rows=latestInquiryVersions(data||[]);
   $('#metricInquiries').textContent=rows.length;
+  if($('#attentionInquiries'))$('#attentionInquiries').textContent=String(rows.length);
   $('#inquiries').innerHTML=rows.length?rows.map(i=>{
     const meta=inquiryRequestMeta(i);
     return `<article class="card"><div class="card-top"><div><h3>${esc(i.client_name)}</h3><div class="meta">${esc(i.preferred_date||'No date')} • ${i.start_hour==null?'No time':`${hour(i.start_hour)}–${hour(i.end_hour)}`}<br>${i.participant_count||1} player${Number(i.participant_count||1)>1?'s':''} • ${money(i.quoted_rate)} • ${esc(i.goal_focus||'General coaching')}<br><strong>Court:</strong> ${esc(courtFromSource(i)||'Not specified')}<br>${esc(i.contact||'No contact')}${meta.ref?`<br><span class="request-ref">Request ${esc(meta.ref)} • v${meta.version||1}</span>`:''}</div></div><span class="tag ${i.status==='new'?'new':''}">${esc(i.status)}</span></div><div class="card-actions"><button class="mini confirm" data-confirm="${i.id}">Confirm</button><button class="mini" data-wait="${i.id}">Mark Waiting</button><button class="mini" data-cancel="${i.id}">Cancel</button></div></article>`;
@@ -241,13 +242,8 @@ try{
     applyListPreview('#bookings','.booking-card','#toggleUpcomingBookings','upcoming');
   }
 
-  const confirmationBtn=document.querySelector(`[data-confirmation="${CSS.escape(String(b.id))}"]`);
-  if(confirmationBtn){
-    confirmationBtn.scrollIntoView({behavior:'smooth',block:'center'});
-    setTimeout(()=>confirmationBtn.click(),180);
-  }else{
-    toast('Booking confirmed. Use Show All in Upcoming Bookings if you need to view it.');
-  }
+  const bookingCard=document.getElementById(`booking-card-${b.id}`);
+  bookingCard?.scrollIntoView({behavior:'smooth',block:'center'});
 }catch(uiErr){
   console.warn('Booking confirmed but admin refresh failed',uiErr);
   toast('Booking confirmed. Refresh the admin page to reload the lists.');
@@ -532,10 +528,11 @@ async function saveManualBooking(e){
     if($('#scheduleDate'))$('#scheduleDate').value=date;
     await loadAll();
     await loadSchedule();
+    window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'manual-booking-created',bookingId}}));
     if(isPast){
       setTimeout(()=>document.querySelector('#pastSessionsSection')?.scrollIntoView({behavior:'smooth',block:'start'}),120);
     }else{
-      setTimeout(()=>document.querySelector(`[data-confirmation="${bookingId}"]`)?.click(),150);
+      setTimeout(()=>document.getElementById(`booking-card-${bookingId}`)?.scrollIntoView({behavior:'smooth',block:'center'}),120);
     }
   }catch(err){
     if(bookingId){
@@ -559,7 +556,7 @@ function parseBookingRequestText(text){
   const code=grab('Request Code');
   let date='',start=null,end=null,players=null;
   if(code){
-    const m=code.match(/CKREQ\|([0-9]{4}-[0-9]{2}-[0-9]{2})\|(\d{1,2})\|(\d{1,2})\|(\d{1,2})/i);
+    const m=code.match(/(?:KZREQ|CKREQ)\|([0-9]{4}-[0-9]{2}-[0-9]{2})\|(\d{1,2})\|(\d{1,2})\|(\d{1,2})/i);
     if(m){date=m[1];start=Number(m[2]);end=Number(m[3]);players=Number(m[4])}
   }
   if(!date){
@@ -588,6 +585,8 @@ function parseBookingRequestText(text){
     court:grab('Court')||'',
     goal:grab('Goal')||'General coaching',
     amount:Number.isFinite(amount)?amount:null,
+    requestRef:grab('Request Ref')||null,
+    requestVersion:Number(grab('Request Version')||0)||0,
     source:'Messenger booking request'
   };
 }
@@ -599,6 +598,22 @@ function openPasteBooking(){
   setTimeout(()=>$('#pasteBookingText')?.focus(),80);
 }
 function closePasteBooking(){$('#pasteBookingDialog')?.close()}
+async function findPendingInquiryForParsed(parsed){
+  const {data,error}=await db.from('inquiries').select('*').in('status',['new','waiting','tentative']).order('created_at',{ascending:false}).limit(100);
+  if(error)throw error;
+  const rows=latestInquiryVersions(data||[]);
+  if(parsed.requestRef){
+    const exact=rows.find(row=>inquiryRequestMeta(row).ref===parsed.requestRef);
+    if(exact)return exact;
+  }
+  const nameKey=String(parsed.name||'').trim().toLowerCase();
+  return rows.find(row=>
+    String(row.client_name||'').trim().toLowerCase()===nameKey &&
+    String(row.preferred_date||'')===String(parsed.date||'') &&
+    Number(row.start_hour)===Number(parsed.start) &&
+    Number(row.end_hour)===Number(parsed.end)
+  )||null;
+}
 async function parseAndFillBooking(){
   const parsed=parseBookingRequestText($('#pasteBookingText').value);
   const status=$('#pasteBookingStatus');
@@ -607,9 +622,25 @@ async function parseAndFillBooking(){
     status.textContent='Could not read the booking details. Paste the complete message copied from the Coach Kazu public site.';
     return;
   }
-  closePasteBooking();
-  await openManualBooking(parsed);
-  toast('Booking request parsed. Review the details, then create the confirmed booking.');
+  status.className='manual-availability ok';
+  status.textContent='Booking details read. Checking the Admin requests…';
+  try{
+    const existing=await findPendingInquiryForParsed(parsed);
+    if(existing){
+      closePasteBooking();
+      await loadInquiries();
+      document.querySelector('#inquiriesSection')?.scrollIntoView({behavior:'smooth',block:'start'});
+      setTimeout(()=>openConfirm(existing),180);
+      toast('Existing request found. Review and confirm it — no duplicate booking was created.');
+      return;
+    }
+    closePasteBooking();
+    await openManualBooking(parsed);
+    toast('Messenger-only request loaded. Review the details, then create the confirmed booking.');
+  }catch(err){
+    status.className='manual-availability warn';
+    status.textContent=err.message||'Could not check the request. Please try again.';
+  }
 }
 function wireManualBooking(){
   const form=$('#manualBookingForm');if(!form)return;
