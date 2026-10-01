@@ -1,6 +1,6 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
-const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s);
+const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s);
 const skills=[['serve','Serve'],['return_score','Return'],['forehand','Forehand'],['backhand','Backhand'],['dinking','Dinking'],['footwork','Footwork'],['positioning','Positioning'],['consistency','Consistency'],['strategy','Strategy'],['confidence','Confidence']];
 let active=null,participants=[],drafts=new Map(),selectedClientId=null,paidBefore=0,balanceBefore=0;
 const money=n=>'₱'+Number(n||0).toLocaleString('en-PH');
