@@ -443,3 +443,41 @@ dialog::backdrop{background:rgba(0,0,0,.78)!important;backdrop-filter:blur(4px)}
     filter:drop-shadow(0 4px 8px rgba(0,0,0,.28))
   }
 }
+
+
+/* Dashboard metric cards are section shortcuts */
+.metrics article.metric-link{
+  cursor:pointer;
+  transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease,background .18s ease;
+  user-select:none;
+}
+.metrics article.metric-link:hover,
+.metrics article.metric-link:focus-visible{
+  border-color:rgba(255,191,0,.72)!important;
+  background:linear-gradient(145deg,#151515,#101010)!important;
+  transform:translateY(-2px);
+  box-shadow:0 12px 28px rgba(0,0,0,.28),0 0 0 1px rgba(255,191,0,.08);
+  outline:none;
+}
+.metrics article.metric-link:active{transform:translateY(0)}
+.metrics article.metric-link:after{
+  content:"VIEW";
+  position:absolute;
+  right:14px;
+  bottom:12px;
+  color:#6f6f73;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.metrics article.metric-link:hover:after,
+.metrics article.metric-link:focus-visible:after{color:var(--kza-gold)}
+.panel.metric-target-flash,
+.admin-flow-heading.metric-target-flash{
+  animation:kazuMetricTargetFlash 1.05s ease;
+}
+@keyframes kazuMetricTargetFlash{
+  0%{box-shadow:0 0 0 0 rgba(255,191,0,0)}
+  32%{box-shadow:0 0 0 3px rgba(255,191,0,.42),0 14px 38px rgba(0,0,0,.28)}
+  100%{box-shadow:0 0 0 0 rgba(255,191,0,0)}
+}
