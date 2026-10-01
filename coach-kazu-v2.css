@@ -500,3 +500,41 @@ linear-gradient(145deg,#121212,#080808);border:1px solid rgba(245,179,1,.18);box
 @media(max-width:430px){
   .hero-backdrop img{object-position:57% 48%}
 }
+
+
+/* =========================================================
+   COACH KAZU HERO SOURCE FIX v34
+   Stable external hero source; no inline data URI.
+   ========================================================= */
+.hero-backdrop img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:58% 50%;
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  filter:brightness(.74) contrast(1.04) saturate(.90)!important;
+}
+.hero-backdrop-shade{
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,#050505 0%,rgba(5,5,5,.90) 10%,rgba(5,5,5,.62) 30%,rgba(5,5,5,.24) 62%,rgba(5,5,5,.10) 100%),
+    linear-gradient(0deg,rgba(5,5,5,.72) 0%,transparent 35%),
+    linear-gradient(180deg,rgba(5,5,5,.18) 0%,transparent 22%);
+}
+@media(max-width:760px){
+  .hero-backdrop img{
+    object-position:58% 50%;
+    opacity:1!important;
+    filter:brightness(.78) contrast(1.04) saturate(.94)!important;
+  }
+  .hero-backdrop-shade{
+    background:
+      linear-gradient(0deg,#050505 0%,rgba(5,5,5,.88) 16%,rgba(5,5,5,.42) 48%,rgba(5,5,5,.08) 100%),
+      linear-gradient(90deg,rgba(5,5,5,.12),transparent 65%);
+  }
+}
+@media(max-width:430px){
+  .hero-backdrop img{object-position:57% 48%}
+}
