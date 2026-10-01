@@ -577,3 +577,404 @@ linear-gradient(145deg,#121212,#080808);border:1px solid rgba(245,179,1,.18);box
       linear-gradient(0deg,#050505 0%,rgba(5,5,5,.80) 16%,rgba(5,5,5,.26) 48%,rgba(5,5,5,.02) 100%)!important;
   }
 }
+
+
+/* =========================================================
+   COACH KAZU PREMIUM VISUAL POLISH v36
+   Premium public hero + Meet Your Coach presentation.
+   Keeps original JPG assets and file extensions unchanged.
+   ========================================================= */
+
+/* --- HERO: cleaner cinematic sports presentation --- */
+.hero{
+  min-height:760px!important;
+  background:
+    radial-gradient(circle at 76% 22%,rgba(245,179,1,.11),transparent 28%),
+    radial-gradient(circle at 88% 48%,rgba(255,122,0,.08),transparent 34%),
+    linear-gradient(125deg,#040404 0%,#080808 52%,#101010 100%)!important;
+  border-bottom:1px solid rgba(245,179,1,.14)!important;
+}
+.hero:before{
+  opacity:.72;
+  background:
+    linear-gradient(118deg,transparent 0 58%,rgba(245,179,1,.055) 58.15% 58.35%,transparent 58.5%),
+    linear-gradient(118deg,transparent 0 68%,rgba(255,122,0,.04) 68.15% 68.35%,transparent 68.5%)!important;
+}
+.hero-backdrop{
+  width:62%!important;
+  background:#050505 url("assets/coach-kazu-hero.jpg?v=36") 58% 50%/cover no-repeat!important;
+}
+.hero-backdrop img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:58% 50%!important;
+  display:block!important;
+  opacity:1!important;
+  filter:brightness(.86) contrast(1.04) saturate(.96)!important;
+  transform:scale(1.005)!important;
+}
+.hero-backdrop-shade{
+  background:
+    linear-gradient(90deg,#050505 0%,rgba(5,5,5,.94) 10%,rgba(5,5,5,.72) 26%,rgba(5,5,5,.27) 57%,rgba(5,5,5,.05) 100%),
+    linear-gradient(0deg,rgba(5,5,5,.68) 0%,transparent 34%),
+    linear-gradient(180deg,rgba(5,5,5,.12) 0%,transparent 24%)!important;
+}
+.hero-content{
+  padding-top:112px!important;
+  padding-bottom:84px!important;
+}
+.hero .eyebrow{
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.30em!important;
+  text-shadow:0 4px 16px rgba(0,0,0,.55);
+}
+.hero h1{
+  text-shadow:0 12px 34px rgba(0,0,0,.38);
+}
+.hero-lead{
+  max-width:660px!important;
+  color:#d7d7d7!important;
+}
+.hero-metrics{
+  gap:10px!important;
+  margin-top:25px!important;
+}
+.hero-metrics span{
+  min-height:38px;
+  padding:0 13px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015)),rgba(13,13,13,.78);
+  box-shadow:0 9px 24px rgba(0,0,0,.18);
+  backdrop-filter:blur(8px);
+}
+.live-pill{
+  box-shadow:0 9px 24px rgba(0,0,0,.16);
+}
+
+/* --- MEET YOUR COACH: premium dark editorial section --- */
+#coach.section{
+  position:relative;
+  overflow:hidden;
+  padding-top:88px!important;
+  padding-bottom:94px!important;
+  background:
+    radial-gradient(circle at 18% 24%,rgba(245,179,1,.055),transparent 28%),
+    radial-gradient(circle at 88% 75%,rgba(255,122,0,.04),transparent 30%),
+    #080808!important;
+  color:#f7f7f5!important;
+}
+#coach.section:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(118deg,transparent 0 63%,rgba(245,179,1,.035) 63.15% 63.35%,transparent 63.5%);
+}
+#coach .coach-grid{
+  position:relative;
+  z-index:1;
+  grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr)!important;
+  gap:64px!important;
+  align-items:center!important;
+  max-width:1320px;
+  margin:0 auto;
+}
+
+/* premium visual card */
+#coach .coach-brand-card{
+  position:relative;
+  min-height:0!important;
+  padding:26px 26px 24px!important;
+  gap:22px!important;
+  border-radius:28px!important;
+  overflow:hidden!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,0)),
+    linear-gradient(145deg,#111214,#080808)!important;
+  border:1px solid rgba(245,179,1,.20)!important;
+  box-shadow:
+    0 28px 70px rgba(0,0,0,.42),
+    inset 0 0 0 1px rgba(245,179,1,.035)!important;
+}
+#coach .coach-brand-card:before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:-1px;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 82% 12%,rgba(245,179,1,.14),transparent 25%),
+    linear-gradient(180deg,rgba(255,255,255,.025),transparent 20%);
+}
+#coach .coach-brand-card:after{
+  content:"";
+  position:absolute;
+  z-index:2;
+  inset:0;
+  pointer-events:none;
+  border-radius:inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.018),
+    inset 0 -100px 140px rgba(0,0,0,.16);
+}
+#coach .coach-brand-main{
+  position:relative;
+  z-index:1;
+  display:block!important;
+  width:100%!important;
+  max-width:520px!important;
+  max-height:none!important;
+  aspect-ratio:1/1!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  padding:0!important;
+  border-radius:20px!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  filter:contrast(1.025) saturate(1.02) brightness(.985)!important;
+  box-shadow:
+    0 22px 52px rgba(0,0,0,.34),
+    0 0 0 1px rgba(245,179,1,.045)!important;
+}
+#coach .coach-brand-wordmark{
+  position:relative;
+  z-index:3;
+  display:block!important;
+  width:min(66%,290px)!important;
+  max-width:290px!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0 auto!important;
+  object-fit:contain!important;
+  filter:
+    drop-shadow(0 12px 24px rgba(0,0,0,.45))
+    drop-shadow(0 0 18px rgba(245,179,1,.10))!important;
+}
+
+/* premium typography stack */
+#coach .coach-copy{
+  position:relative;
+  padding:10px 0;
+}
+#coach .coach-copy>.eyebrow{
+  display:inline-flex!important;
+  align-items:center;
+  gap:12px;
+  margin:0 0 17px!important;
+  color:var(--kz-gold)!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:.28em!important;
+  text-transform:uppercase!important;
+}
+#coach .coach-copy>.eyebrow:after{
+  content:"";
+  width:74px;
+  height:2px;
+  background:linear-gradient(90deg,var(--kz-gold),transparent);
+}
+#coach .coach-copy h2{
+  margin:0 0 10px!important;
+  color:#fff!important;
+  font-family:'Bebas Neue',Impact,'Arial Black',sans-serif!important;
+  font-size:clamp(58px,6vw,92px)!important;
+  line-height:.88!important;
+  letter-spacing:-.025em!important;
+  font-style:italic!important;
+  text-transform:uppercase!important;
+  text-shadow:0 10px 30px rgba(0,0,0,.28);
+}
+#coach .coach-fullname{
+  margin:0 0 15px!important;
+  color:var(--kz-gold)!important;
+  font-size:14px!important;
+  line-height:1.3!important;
+  font-weight:900!important;
+  letter-spacing:.22em!important;
+  text-transform:uppercase!important;
+}
+#coach .coach-role{
+  margin:0 0 21px!important;
+  color:#f4f4f4!important;
+  font-size:18px!important;
+  line-height:1.45!important;
+  font-weight:800!important;
+}
+
+/* premium credential pills */
+#coach .coach-credentials{
+  gap:10px!important;
+  margin:0 0 25px!important;
+}
+#coach .coach-credentials span{
+  min-height:44px!important;
+  padding:0 17px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:999px!important;
+  border:1px solid rgba(255,255,255,.09)!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)),
+    #121212!important;
+  color:#e9e9e9!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.075em!important;
+  text-transform:uppercase!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.17)!important;
+}
+#coach .coach-copy p{
+  max-width:690px;
+  margin-top:0;
+  color:#bdbdc1!important;
+  font-size:17px!important;
+  line-height:1.78!important;
+}
+#coach .coach-vision{
+  margin:20px 0 0!important;
+  padding:4px 0 4px 18px!important;
+  border-left:3px solid var(--kz-gold)!important;
+  color:#a9a9ae!important;
+  font-size:15px!important;
+}
+
+/* premium info cards */
+#coach .info-grid{
+  gap:12px!important;
+  margin-top:28px!important;
+}
+#coach .info-card{
+  min-height:100px;
+  padding:18px!important;
+  border-radius:16px!important;
+  border:1px solid rgba(255,255,255,.075)!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),
+    #101011!important;
+  color:#fff!important;
+  box-shadow:0 12px 28px rgba(0,0,0,.16)!important;
+}
+#coach .info-card strong{
+  font-size:14px!important;
+  line-height:1.4!important;
+}
+#coach .info-card small{
+  margin-top:7px!important;
+  color:#8f8f94!important;
+  font-size:11px!important;
+}
+
+/* --- responsive refinement --- */
+@media(max-width:1050px){
+  .hero-backdrop{width:66%!important}
+  #coach .coach-grid{
+    grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr)!important;
+    gap:44px!important;
+  }
+}
+@media(max-width:900px){
+  #coach.section{
+    padding-top:64px!important;
+    padding-bottom:72px!important;
+  }
+  #coach .coach-grid{
+    grid-template-columns:1fr!important;
+    gap:38px!important;
+    max-width:720px;
+  }
+  #coach .coach-brand-card{
+    width:min(100%,620px);
+    margin:0 auto;
+  }
+}
+@media(max-width:760px){
+  .hero{
+    min-height:780px!important;
+  }
+  .hero-backdrop{
+    width:100%!important;
+    height:48%!important;
+    background-position:58% 48%!important;
+  }
+  .hero-backdrop img{
+    object-position:58% 48%!important;
+    filter:brightness(.90) contrast(1.03) saturate(.98)!important;
+  }
+  .hero-backdrop-shade{
+    background:
+      linear-gradient(0deg,#050505 0%,rgba(5,5,5,.82) 16%,rgba(5,5,5,.28) 50%,rgba(5,5,5,.02) 100%)!important;
+  }
+  .hero-content{
+    padding:336px 20px 58px!important;
+  }
+  .hero-metrics span{
+    min-height:36px;
+    padding:0 12px;
+    font-size:11px;
+  }
+
+  #coach.section{
+    padding:56px 18px 66px!important;
+  }
+  #coach .coach-grid{
+    gap:34px!important;
+  }
+  #coach .coach-brand-card{
+    padding:16px 16px 20px!important;
+    gap:18px!important;
+    border-radius:22px!important;
+  }
+  #coach .coach-brand-main{
+    max-width:none!important;
+    border-radius:16px!important;
+  }
+  #coach .coach-brand-wordmark{
+    width:min(62%,250px)!important;
+  }
+  #coach .coach-copy{
+    padding:0 2px;
+  }
+  #coach .coach-copy h2{
+    font-size:clamp(52px,14vw,72px)!important;
+  }
+  #coach .coach-fullname{
+    font-size:12px!important;
+    letter-spacing:.18em!important;
+  }
+  #coach .coach-role{
+    font-size:16px!important;
+  }
+  #coach .coach-credentials{
+    gap:9px!important;
+  }
+  #coach .coach-credentials span{
+    min-height:42px!important;
+    padding:0 14px!important;
+    font-size:11px!important;
+  }
+  #coach .coach-copy p{
+    font-size:15.5px!important;
+    line-height:1.75!important;
+  }
+  #coach .info-grid{
+    grid-template-columns:1fr!important;
+  }
+  #coach .info-card{
+    min-height:0;
+  }
+}
+@media(max-width:430px){
+  .hero{min-height:760px!important}
+  .hero-content{padding-top:322px!important}
+  #coach.section{padding-left:16px!important;padding-right:16px!important}
+  #coach .coach-brand-card{padding:14px 14px 18px!important}
+  #coach .coach-copy>.eyebrow{letter-spacing:.22em!important}
+  #coach .coach-copy>.eyebrow:after{width:48px}
+  #coach .coach-credentials span{font-size:10.5px!important}
+}
