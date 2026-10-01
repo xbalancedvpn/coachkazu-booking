@@ -1,7 +1,7 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
 const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-let reportRows=[],confirmationBlob=null,confirmationBooking=null,notifyTimer=null;
+let reportRows=[],confirmationBlob=null,confirmationBooking=null,notifyTimer=null,notifyRequestSeq=0;
 const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{maximumFractionDigits:0});
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hour=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`;
@@ -87,12 +87,16 @@ function wireAdminMenu(){
 async function loadNotifications(){
   const bell=$('#adminNotifyBtn'),badge=$('#adminNotifyBadge'),list=$('#adminNotifyList');
   if(!bell||!list)return;
+  const requestId=++notifyRequestSeq;
   try{
+    const {data:{session}}=await db.auth.getSession();
+    if(!session||requestId!==notifyRequestSeq)return;
     const [{data:inq,error:ie},{data:completed,error:be}]=await Promise.all([
       db.from('inquiries').select('id,client_name,preferred_date,start_hour,end_hour,created_at,source_text,status').in('status',['new','waiting','tentative']).order('created_at',{ascending:false}).limit(60),
       db.from('bookings').select('id,client_name,session_date,start_hour,end_hour,total_amount,session_status').eq('status','confirmed').eq('session_status','completed').order('session_date',{ascending:false}).limit(80)
     ]);
     if(ie)throw ie;if(be)throw be;
+    if(requestId!==notifyRequestSeq)return;
     const latestInq=latestInquiryVersionsOps(inq||[]);
     const ids=(completed||[]).map(x=>x.id);
     const paidMap=new Map();
@@ -113,7 +117,6 @@ async function loadNotifications(){
       parts.push(`<div class="notify-group"><h4>Completed • payment pending <span>${unpaid.length}</span></h4>${unpaid.slice(0,6).map(x=>`<a href="#" data-payment-notify="${x.id}"><strong>${esc(x.client_name)}</strong><small>${esc(x.session_date)} • ${money(Number(x.total_amount||0)-x.paid)} due</small></a>`).join('')}</div>`);
     }
     list.innerHTML=parts.length?parts.join(''):'<div class="notify-empty">No items need attention.</div>';
-    $('#attentionInquiries').textContent=String(latestInq.length);
     $('#attentionCompletedDue').textContent=String(unpaid.length);
     $('#attentionPanel')?.classList.toggle('has-alerts',total>0);
   }catch(e){console.warn(e);list.innerHTML='<div class="notify-empty">Could not refresh notifications.</div>'}
@@ -156,10 +159,11 @@ function canvasToBlob(canvas){return new Promise((resolve,reject)=>{if(canvas.to
 async function openConfirmationCard(id){
   try{
     const [{data:b,error:be},{data:p,error:pe}]=await Promise.all([
-      db.from('bookings').select('*').eq('id',id).single(),
+      db.from('bookings').select('*').eq('id',id).maybeSingle(),
       db.from('booking_payments').select('amount').eq('booking_id',id)
     ]);
     if(be)throw be;if(pe)throw pe;
+    if(!b)throw new Error('This booking is no longer in the database. Refresh the admin dashboard and try again.');
     confirmationBooking=b;
     const paid=(p||[]).reduce((s,x)=>s+Number(x.amount||0),0),total=Number(b.total_amount||0),balance=Math.max(0,total-paid);
     const canvas=$('#bookingConfirmationCanvas'),ctx=canvas.getContext('2d');
