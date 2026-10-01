@@ -80,7 +80,7 @@
 <section id="adminView" class="hidden"><header class="top"><div class="admin-head-actions"><button id="adminMenuBtn" class="admin-menu-btn" type="button" aria-label="Open admin menu" aria-expanded="false">☰</button><a class="admin-top-brand" href="index.html" aria-label="Coach Kazu home"><img class="admin-brand-wordmark" src="assets/coach-kazu-wordmark.webp?v=3" alt="Coach Kazu"><img class="admin-brand-icon" src="assets/coach-kazu-favicon.webp?v=3" alt="" aria-hidden="true"></a></div><div class="admin-head-actions"><button id="shareBookingLinkBtn" class="admin-quick-btn" type="button" aria-label="Share fresh booking link" title="Share Booking Link">🔗</button><button id="quickWeeklyScheduleBtn" class="admin-quick-btn" type="button" aria-label="Generate weekly availability" title="Weekly Availability">🗓️</button><div id="adminNotifyWrap" class="admin-notify-wrap"><button id="adminNotifyBtn" class="admin-notify-btn" type="button" aria-label="Notifications">🔔<span id="adminNotifyBadge" class="admin-notify-badge hidden-badge">0</span></button><div id="adminNotifyPanel" class="admin-notify-panel"><div id="adminNotifyList"><div class="notify-empty">Loading notifications…</div></div></div></div><span id="adminEmail"></span><button id="logoutBtn" class="ghost">Sign out</button></div></header><div id="adminNavBackdrop" class="admin-nav-backdrop"></div><aside id="adminNav" class="admin-nav"><h3>Admin Menu</h3><a href="#dashboardSection">Dashboard</a><div class="admin-nav-group">Operations</div><a href="#todaySection">Today's Sessions</a><a href="#inquiriesSection">Booking Inquiries</a><a href="#bookingsSection">Upcoming Bookings</a><a href="#pastSessionsSection">Past Sessions</a><a id="adminManualBookingLink" href="#bookingsSection">+ Manual Booking</a><a href="#paymentFollowupSection">Payment Follow-up</a><a href="#completedSessionsSection">Completed Sessions</a><a href="#scheduleSection">Schedule</a><div class="admin-nav-group">Clients</div><a href="#clientsSection">Client Profiles</a><div class="admin-nav-group">Finance</div><a href="#reportsSection">Income & Collection</a><div class="admin-nav-group">Public Content</div><a href="#weeklyScheduleSection">Weekly Availability</a><a href="#mediaSection">Carousel & Testimonials</a><div class="admin-nav-logout-wrap"><button id="logoutNavBtn" class="admin-nav-logout" type="button">Sign out</button></div></aside><main class="wrap">
 <section class="hero" id="dashboardSection"><div><span class="eyebrow">DASHBOARD</span><h1>Coach Kazu Command Center</h1><p>Bookings, coaching sessions, collections, player progress and public content — all in one place.</p></div><button id="refreshBtn" class="primary">Refresh</button></section>
 <section id="attentionPanel" class="panel attention-panel"><a class="attention-card" href="#inquiriesSection"><div><span class="eyebrow">NEW INQUIRIES</span><small>Booking requests that still need review</small></div><strong id="attentionInquiries">0</strong></a><a class="attention-card" href="#paymentFollowupSection"><div><span class="eyebrow">PAYMENT FOLLOW-UP</span><small>Completed sessions with remaining balance</small></div><strong id="attentionCompletedDue">0</strong></a></section>
-<section class="metrics"><article><span>New inquiries</span><strong id="metricInquiries">0</strong></article><article><span>Upcoming bookings</span><strong id="metricBookings">0</strong></article><article><span>Sessions today</span><strong id="metricToday">0</strong></article><article><span>Active clients</span><strong id="metricClients">0</strong></article><article><span>Balance due</span><strong id="metricBalance">₱0</strong></article><article><span>Blocked today</span><strong id="metricBlocked">0</strong></article></section>
+<section class="metrics" aria-label="Dashboard shortcuts"><article class="metric-link" data-metric-target="#inquiriesSection" tabindex="0" role="link" aria-label="Open booking inquiries"><span>New inquiries</span><strong id="metricInquiries">0</strong></article><article class="metric-link" data-metric-target="#bookingsSection" tabindex="0" role="link" aria-label="Open upcoming bookings"><span>Upcoming bookings</span><strong id="metricBookings">0</strong></article><article class="metric-link" data-metric-target="#todaySection" tabindex="0" role="link" aria-label="Open today sessions"><span>Sessions today</span><strong id="metricToday">0</strong></article><article class="metric-link" data-metric-target="#clientsSection" tabindex="0" role="link" aria-label="Open active clients"><span>Active clients</span><strong id="metricClients">0</strong></article><article class="metric-link" data-metric-target="#reportsSection" tabindex="0" role="link" aria-label="Open balance and financial reports"><span>Balance due</span><strong id="metricBalance">₱0</strong></article><article class="metric-link" data-metric-target="#scheduleSection" data-metric-action="today-schedule" tabindex="0" role="link" aria-label="Open today schedule blocks"><span>Blocked today</span><strong id="metricBlocked">0</strong></article></section>
 <section class="admin-flow-heading"><span class="eyebrow">OPERATIONS</span><h2>Bookings & daily coaching</h2><p>Handle today's sessions first, then inquiries, upcoming bookings, past sessions that still need completion, and schedule availability.</p></section>
 <section class="panel" id="todaySection"><div class="panel-head"><div><span class="eyebrow">TODAY</span><h2>Today's sessions</h2></div></div><div id="todayBookings" class="cards"><div class="empty">Loading…</div></div></section>
 <section class="panel" id="inquiriesSection"><div class="panel-head"><div><span class="eyebrow">ACTION NEEDED</span><h2>Booking inquiries</h2></div></div><div id="inquiries" class="cards"><div class="empty">Loading…</div></div></section>
@@ -233,6 +233,54 @@
   });
   observer.observe(tableWrap,{childList:true,subtree:true});
   syncReportRows(true);
+})();
+</script>
+
+<script id="dashboard-metric-navigation">
+(function(){
+  function ymd(d){
+    var pad=function(n){return String(n).padStart(2,'0')};
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  }
+  function go(card){
+    if(!card)return;
+    var selector=card.getAttribute('data-metric-target');
+    var target=selector?document.querySelector(selector):null;
+    if(!target)return;
+
+    if(card.getAttribute('data-metric-action')==='today-schedule'){
+      var date=document.getElementById('scheduleDate');
+      if(date){
+        var today=ymd(new Date());
+        if(date.value!==today){
+          date.value=today;
+          date.dispatchEvent(new Event('input',{bubbles:true}));
+          date.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+      }
+    }
+
+    var header=document.querySelector('.top');
+    var offset=(header?header.getBoundingClientRect().height:0)+14;
+    var top=window.scrollY+target.getBoundingClientRect().top-offset;
+    window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+    if(history.replaceState)history.replaceState(null,'',selector);
+
+    target.classList.remove('metric-target-flash');
+    void target.offsetWidth;
+    target.classList.add('metric-target-flash');
+    setTimeout(function(){target.classList.remove('metric-target-flash')},1100);
+  }
+
+  document.querySelectorAll('.metric-link[data-metric-target]').forEach(function(card){
+    card.addEventListener('click',function(){go(card)});
+    card.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        go(card);
+      }
+    });
+  });
 })();
 </script>
 </body></html>
