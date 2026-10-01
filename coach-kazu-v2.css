@@ -538,3 +538,42 @@ linear-gradient(145deg,#121212,#080808);border:1px solid rgba(245,179,1,.18);box
 @media(max-width:430px){
   .hero-backdrop img{object-position:57% 48%}
 }
+
+
+/* =========================================================
+   COACH KAZU VALID JPG HERO v35
+   Uploaded source verified as complete JPEG.
+   IMG + CSS background fallback use the same file.
+   ========================================================= */
+.hero-backdrop{
+  background:#050505 url("assets/coach-kazu-hero.jpg?v=35") 58% 50%/cover no-repeat!important;
+}
+.hero-backdrop img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:58% 50%!important;
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  filter:brightness(.82) contrast(1.03) saturate(.95)!important;
+  transform:none!important;
+}
+.hero-backdrop-shade{
+  background:
+    linear-gradient(90deg,rgba(5,5,5,.88) 0%,rgba(5,5,5,.64) 22%,rgba(5,5,5,.20) 58%,rgba(5,5,5,.04) 100%),
+    linear-gradient(0deg,rgba(5,5,5,.65) 0%,transparent 34%)!important;
+}
+@media(max-width:760px){
+  .hero-backdrop{
+    background-position:58% 48%!important;
+  }
+  .hero-backdrop img{
+    object-position:58% 48%!important;
+    filter:brightness(.88) contrast(1.03) saturate(.98)!important;
+  }
+  .hero-backdrop-shade{
+    background:
+      linear-gradient(0deg,#050505 0%,rgba(5,5,5,.80) 16%,rgba(5,5,5,.26) 48%,rgba(5,5,5,.02) 100%)!important;
+  }
+}
