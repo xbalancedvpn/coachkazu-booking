@@ -1,6 +1,6 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
-const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)];
+const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let activeInquiry=null,activePaymentBooking=null,activeClient=null,paymentTotals=new Map(),clientCache=[],listPreviewState={upcoming:false,past:false,payment:false,completed:false,clients:false};
 const LIST_PREVIEW_LIMIT=3;
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,hour=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`,shortHour=h=>`${h%12||12}${h<12?'am':'pm'}`;
