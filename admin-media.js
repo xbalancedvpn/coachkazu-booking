@@ -1,6 +1,6 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo',BUCKET='coach-kazu-gallery';
-const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s);
+const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const toast=msg=>{const t=$('#toast');if(!t)return alert(msg);t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)};
 const niceDate=s=>{try{return new Date(s+'T12:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}catch{return s}};
@@ -33,6 +33,6 @@ async function reviewTestimonial(id,status,published){const {error}=await db.fro
 async function publishTestimonial(id,v){const {error}=await db.from('testimonials').update({is_published:v}).eq('id',id);if(error)return toast(error.message);toast(v?'Testimonial published.':'Testimonial hidden.');loadTestimonialsAdmin()}
 async function deleteTestimonial(id){if(!confirm('Delete this testimonial?'))return;const {error}=await db.from('testimonials').delete().eq('id',id);if(error)return toast(error.message);toast('Testimonial deleted.');loadTestimonialsAdmin()}
 async function refresh(){const {data:{session}}=await db.auth.getSession();if(!session)return;loadGalleryAdmin();loadTestimonialsAdmin()}
-function init(){ $('#galleryUploadForm')?.addEventListener('submit',uploadGallery); $('#refreshMediaBtn')?.addEventListener('click',refresh); db.auth.onAuthStateChange((_,s)=>{if(s)setTimeout(refresh,150)}); refresh()}
+function init(){ $('#galleryUploadForm')?.addEventListener('submit',uploadGallery); $('#refreshMediaBtn')?.addEventListener('click',refresh); db.auth.onAuthStateChange((_,s)=>{if(s)setTimeout(refresh,150)}); window.addEventListener('coach:admin-ready',()=>setTimeout(refresh,120)); refresh()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
