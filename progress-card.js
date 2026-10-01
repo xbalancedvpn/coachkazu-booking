@@ -1,6 +1,6 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
-const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s);
+const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s);
 const skills=[['serve','Serve'],['return_score','Return'],['forehand','Forehand'],['backhand','Backhand'],['dinking','Dinking'],['footwork','Footwork'],['positioning','Positioning'],['consistency','Consistency'],['strategy','Strategy'],['confidence','Confidence']];
 let current={client:null,assessments:[],blob:null};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -12,7 +12,7 @@ async function resolveClient(){const name=$('#clientName')?.textContent?.trim();
 async function fetchAssessments(id){const {data,error}=await db.from('progress_assessments').select('*').eq('client_id',id).order('assessment_date',{ascending:false}).order('created_at',{ascending:false}).limit(30);if(error)throw error;return data||[]}
 function insightHtml(a){if(!a.length)return '';const latest=a[0],prev=a[1],overall=avg(latest),t=trend(latest,prev),rated=skills.map(([k,l])=>({k,l,v:Number(latest[k]||0)})).filter(x=>x.v>0).sort((x,y)=>y.v-x.v),best=rated[0],focus=[...rated].sort((x,y)=>x.v-y.v)[0];return `<div class="progress-insight"><div class="progress-insight-head"><div><span>Current overall</span><strong>${overall?overall.toFixed(1):'—'}/5</strong></div><span class="${t.cls}">${esc(t.text)}</span></div><div class="progress-insight-grid"><div><small>Level</small><b>${label(overall)}</b></div><div><small>Strongest area</small><b>${esc(best?.l||'Not rated')}</b></div><div><small>Next focus</small><b>${esc(focus?.l||'Not rated')}</b></div></div></div>`}
 async function refreshInsight(){try{const c=await resolveClient();if(!c)return;const a=await fetchAssessments(c.id),panel=$('#clientProgress');if(!panel)return;panel.querySelector('.progress-insight')?.remove();if(a.length)panel.insertAdjacentHTML('afterbegin',insightHtml(a))}catch(e){console.warn(e)}}
-function rounded(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.closePath()}
+function rounded(ctx,x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else{ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r)}ctx.closePath()}
 const brandImageCache=new Map();
 function loadBrandImage(src){if(brandImageCache.has(src))return brandImageCache.get(src);const p=new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Could not load branding asset.'));img.src=src});brandImageCache.set(src,p);return p}
 function drawContained(ctx,img,x,y,w,h){const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight),dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh)}
