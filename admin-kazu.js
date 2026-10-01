@@ -9,7 +9,7 @@ function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');se
 function esc(s){return String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function money(n){return `₱${Number(n||0).toLocaleString('en-PH')}`}
 function applyListPreview(containerSelector,itemSelector,toggleSelector,key){
-  const items=$(`${containerSelector} ${itemSelector}`),toggle=$(toggleSelector),expanded=Boolean(listPreviewState[key]);
+  const items=$$(`${containerSelector} ${itemSelector}`),toggle=$(toggleSelector),expanded=Boolean(listPreviewState[key]);
   items.forEach((item,index)=>item.classList.toggle('list-preview-hidden',!expanded&&index>=LIST_PREVIEW_LIMIT));
   if(toggle){
     toggle.style.display=items.length>LIST_PREVIEW_LIMIT?'':'none';
@@ -492,58 +492,155 @@ async function openManualBooking(prefill=null){
 function closeManualBooking(){$('#manualBookingDialog')?.close()}
 async function saveManualBooking(e){
   e?.preventDefault();
-  const btn=$('#saveManualBooking'),name=$('#manualBookingName').value.trim().replace(/\s+/g,' '),contact=$('#manualBookingContact').value.trim(),date=$('#manualBookingDate').value,start=Number($('#manualBookingStart').value),end=Number($('#manualBookingEnd').value),players=Math.max(1,Number($('#manualBookingPlayers').value)||1),court=manualCourtValue(),amount=Number($('#manualBookingAmount').value||0),payment=Number($('#manualBookingPayment').value||0);
+  const btn=$('#saveManualBooking'),
+    name=$('#manualBookingName').value.trim().replace(/\s+/g,' '),
+    contact=$('#manualBookingContact').value.trim(),
+    date=$('#manualBookingDate').value,
+    start=Number($('#manualBookingStart').value),
+    end=Number($('#manualBookingEnd').value),
+    players=Math.max(1,Number($('#manualBookingPlayers').value)||1),
+    court=manualCourtValue(),
+    amount=Number($('#manualBookingAmount').value||0),
+    payment=Number($('#manualBookingPayment').value||0);
   if(name.length<2)return toast('Enter the client name.');
   if(!court)return toast('Select a court or enter the court name.');
   if(!date||!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return toast('Choose a valid date and time.');
   if(amount<0)return toast('Enter a valid coaching fee.');
   if(payment<0||payment>amount)return toast('Payment cannot be greater than the coaching fee.');
-  const old=btn.textContent;btn.disabled=true;btn.textContent='Creating…';
-  let bookingId=null;
+
+  const old=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Creating…';
+  let bookingId=null,committed=false;
+
   try{
-    const {data:conflicts,error:ce}=await db.from('schedule_slots').select('start_hour,status').eq('slot_date',date).gte('start_hour',start).lt('start_hour',end).in('status',['booked','unavailable']);
-    if(ce)throw ce;if(conflicts?.length)throw new Error('One or more selected hours are no longer available. Please choose another time.');
+    const {data:conflicts,error:ce}=await db.from('schedule_slots')
+      .select('start_hour,status')
+      .eq('slot_date',date)
+      .gte('start_hour',start)
+      .lt('start_hour',end)
+      .in('status',['booked','unavailable']);
+    if(ce)throw ce;
+    if(conflicts?.length)throw new Error('One or more selected hours are no longer available. Please choose another time.');
+
     const selectedClient=clientCache.find(x=>String(x.id)===String($('#manualBookingClient').value));
     const primary=selectedClient||await findOrCreateClient({full_name:name,contact:contact||null});
-    const {data:b,error:be}=await db.from('bookings').insert({session_date:date,start_hour:start,end_hour:end,client_name:name,contact:contact||null,participant_count:players,coaching_type:players===1?'1-on-1':`${players} Players`,rate_mode:manualBookingState.rateOverridden?'custom':'standard',rate_per_person:players?amount/players:amount,total_amount:amount,court_name:court,notes:$('#manualBookingNote').value.trim()||null,status:'confirmed',session_status:'scheduled',client_id:primary.id}).select('id').single();
-    if(be)throw be;bookingId=b.id;
-    const pRows=[{booking_id:bookingId,client_id:primary.id,participant_order:1,first_name:primary.first_name||splitFullName(name).first,last_name:primary.last_name||splitFullName(name).last,full_name:name,contact:contact||null,contact_key:contact?contact.toLowerCase():null,is_primary:true}];
+    const {data:b,error:be}=await db.from('bookings').insert({
+      session_date:date,
+      start_hour:start,
+      end_hour:end,
+      client_name:name,
+      contact:contact||null,
+      participant_count:players,
+      coaching_type:players===1?'1-on-1':`${players} Players`,
+      rate_mode:manualBookingState.rateOverridden?'custom':'standard',
+      rate_per_person:players?amount/players:amount,
+      total_amount:amount,
+      court_name:court,
+      notes:$('#manualBookingNote').value.trim()||null,
+      status:'confirmed',
+      session_status:'scheduled',
+      client_id:primary.id
+    }).select('id').single();
+    if(be)throw be;
+    bookingId=b.id;
+
+    const pRows=[{
+      booking_id:bookingId,
+      client_id:primary.id,
+      participant_order:1,
+      first_name:primary.first_name||splitFullName(name).first,
+      last_name:primary.last_name||splitFullName(name).last,
+      full_name:name,
+      contact:contact||null,
+      contact_key:contact?contact.toLowerCase():null,
+      is_primary:true
+    }];
     for(let i=2;i<=players;i++){
       const raw=document.querySelector(`[data-manual-participant="${i}"]`)?.value.trim().replace(/\s+/g,' ');
       if(!raw)continue;
       const pc=await findOrCreateClient({full_name:raw,contact:null}),parts=splitFullName(raw);
-      pRows.push({booking_id:bookingId,client_id:pc.id,participant_order:i,first_name:pc.first_name||parts.first,last_name:pc.last_name||parts.last,full_name:raw,contact:null,contact_key:null,is_primary:false});
+      pRows.push({
+        booking_id:bookingId,
+        client_id:pc.id,
+        participant_order:i,
+        first_name:pc.first_name||parts.first,
+        last_name:pc.last_name||parts.last,
+        full_name:raw,
+        contact:null,
+        contact_key:null,
+        is_primary:false
+      });
     }
-    const {error:bpe}=await db.from('booking_participants').insert(pRows);if(bpe)throw bpe;
-    const rows=[];for(let h=start;h<end;h++)rows.push({slot_date:date,start_hour:h,status:'booked',client_name:name,contact:contact||null,coaching_type:players===1?'1-on-1':`${players} Players`,rate:amount,booking_id:bookingId});
-    const {error:se}=await db.from('schedule_slots').upsert(rows,{onConflict:'slot_date,start_hour'});if(se)throw se;
+    const {error:bpe}=await db.from('booking_participants').insert(pRows);
+    if(bpe)throw bpe;
+
+    const rows=[];
+    for(let h=start;h<end;h++)rows.push({
+      slot_date:date,
+      start_hour:h,
+      status:'booked',
+      client_name:name,
+      contact:contact||null,
+      coaching_type:players===1?'1-on-1':`${players} Players`,
+      rate:amount,
+      booking_id:bookingId
+    });
+    const {error:se}=await db.from('schedule_slots').upsert(rows,{onConflict:'slot_date,start_hour'});
+    if(se)throw se;
+
     if(payment>0){
       const paidAt=$('#manualBookingPaymentDate').value||ymd(new Date());
-      const {error:pe}=await db.from('booking_payments').insert({booking_id:bookingId,amount:payment,paid_at:paidAt,payment_method:$('#manualBookingPaymentMethod').value,note:'Recorded during manual booking',source:'manual'});
+      const {error:pe}=await db.from('booking_payments').insert({
+        booking_id:bookingId,
+        amount:payment,
+        paid_at:paidAt,
+        payment_method:$('#manualBookingPaymentMethod').value,
+        note:'Recorded during manual booking',
+        source:'manual'
+      });
       if(pe)throw pe;
     }
+
+    committed=true;
     const isPast=date<ymd(new Date());
     closeManualBooking();
     toast(isPast?'Past session created. Mark it completed to add it to Earned Income.':'Manual booking created and schedule blocked.');
     if($('#scheduleDate'))$('#scheduleDate').value=date;
-    await loadAll();
-    await loadSchedule();
+
     window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'manual-booking-created',bookingId}}));
+
+    try{
+      await loadAll();
+      await loadSchedule();
+    }catch(refreshErr){
+      console.warn('Booking saved but admin refresh failed',refreshErr);
+      toast('Booking saved. Refresh the admin page if the lists do not update immediately.');
+    }
+
     if(isPast){
       setTimeout(()=>document.querySelector('#pastSessionsSection')?.scrollIntoView({behavior:'smooth',block:'start'}),120);
     }else{
       setTimeout(()=>document.getElementById(`booking-card-${bookingId}`)?.scrollIntoView({behavior:'smooth',block:'center'}),120);
     }
   }catch(err){
-    if(bookingId){
+    if(bookingId&&!committed){
       await db.from('booking_payments').delete().eq('booking_id',bookingId);
       await db.from('schedule_slots').delete().eq('booking_id',bookingId);
       await db.from('booking_participants').delete().eq('booking_id',bookingId);
       await db.from('bookings').delete().eq('id',bookingId);
     }
-    toast(err.message||'Could not create the manual booking.');
-    await loadManualBookingAvailability();
-  }finally{btn.disabled=false;btn.textContent=old}
+    if(committed){
+      console.warn('Booking saved but a post-save admin action failed',err);
+      toast('Booking was saved. Refresh the admin page to reload the latest data.');
+    }else{
+      toast(err.message||'Could not create the manual booking.');
+      await loadManualBookingAvailability();
+    }
+  }finally{
+    btn.disabled=false;
+    btn.textContent=old;
+  }
 }
 function parseBookingRequestText(text){
   const src=String(text||'').replace(/\r/g,'').trim();
@@ -777,7 +874,7 @@ $('#manualAddClientBtn')?.addEventListener('click',openAddClientDialog);
 $('#closeAddClientDialog')?.addEventListener('click',closeAddClientDialog);
 $('#cancelAddClient')?.addEventListener('click',closeAddClientDialog);
 $('#addClientForm')?.addEventListener('submit',async e=>{e.preventDefault();const full=$('#manualClientName').value.trim().replace(/\s+/g,' '),contact=$('#manualClientContact').value.trim(),notes=$('#manualClientNote').value.trim();if(full.length<2)return toast('Enter the client full name.');const existing=clientCache.find(c=>c.is_active!==false&&String(c.full_name||'').trim().toLowerCase()===full.toLowerCase());if(existing){closeAddClientDialog();activeClient=existing;toast('Client already exists. Opening profile.');$('#clientName').textContent=existing.full_name;$('#clientMeta').textContent=existing.contact||'No contact saved';$('#clientDialog').showModal();await loadClientDetails();return}const n=splitFullName(full),payload={first_name:n.first||null,last_name:n.last||null,full_name:full,name_key:full.toLowerCase(),contact:contact||null,contact_key:contact?contact.toLowerCase():null,notes:notes||null,is_active:true};const btn=$('#saveManualClient'),old=btn.textContent;btn.disabled=true;btn.textContent='Adding…';try{const {data,error}=await db.from('clients').insert(payload).select('*').single();if(error)throw error;closeAddClientDialog();toast('Client added. You can now add a progress assessment.');await loadClients();activeClient=data;$('#clientName').textContent=data.full_name;$('#clientMeta').textContent=data.contact||'No contact saved';$('#clientDialog').showModal();await loadClientDetails()}catch(err){toast(err.message||'Could not add client.')}finally{btn.disabled=false;btn.textContent=old}});
-function renderClientList(){const q=($('#clientSearch').value||'').trim().toLowerCase(),rows=clientCache.filter(c=>!q||c.full_name.toLowerCase().includes(q)||(c.contact||'').toLowerCase().includes(q));$('#clients').innerHTML=rows.length?rows.map(c=>`<button class="client-card" data-client="${c.id}"><span>${esc(c.full_name)}</span><small>${esc(c.contact||'No contact saved')}</small><b>View profile →</b></button>`).join(''):'<div class="empty">No matching clients.</div>';$('[data-client]').forEach(btn=>btn.onclick=()=>openClient(btn.dataset.client));applyListPreview('#clients','.client-card','#toggleClientProfiles','clients')}
+function renderClientList(){const q=($('#clientSearch').value||'').trim().toLowerCase(),rows=clientCache.filter(c=>!q||c.full_name.toLowerCase().includes(q)||(c.contact||'').toLowerCase().includes(q));$('#clients').innerHTML=rows.length?rows.map(c=>`<button class="client-card" data-client="${c.id}"><span>${esc(c.full_name)}</span><small>${esc(c.contact||'No contact saved')}</small><b>View profile →</b></button>`).join(''):'<div class="empty">No matching clients.</div>';$$('[data-client]').forEach(btn=>btn.onclick=()=>openClient(btn.dataset.client));applyListPreview('#clients','.client-card','#toggleClientProfiles','clients')}
 async function openClient(id){activeClient=clientCache.find(c=>c.id===id);if(!activeClient)return;$('#clientName').textContent=activeClient.full_name;$('#clientMeta').textContent=activeClient.contact||'No contact saved';$('#clientDialog').showModal();await loadClientDetails()}
 $('#closeClientDialog').onclick=()=>$('#clientDialog').close();
 async function loadClientDetails(){if(!activeClient)return;const {data:bp,error}=await db.from('booking_participants').select('booking_id').eq('client_id',activeClient.id);if(error)return toast(error.message);const ids=[...new Set((bp||[]).map(x=>x.booking_id))];let sessions=[];if(ids.length){const {data}=await db.from('bookings').select('*').in('id',ids).order('session_date',{ascending:false}).order('start_hour',{ascending:false});sessions=data||[]}const completed=sessions.filter(x=>x.session_status==='completed').length,hours=sessions.filter(x=>x.status==='confirmed').reduce((s,x)=>s+(Number(x.end_hour)-Number(x.start_hour)),0);$('#clientStats').innerHTML=`<div><span>Total sessions</span><strong>${sessions.length}</strong></div><div><span>Completed</span><strong>${completed}</strong></div><div><span>Coaching hours</span><strong>${hours}</strong></div>`;$('#clientSessions').innerHTML=sessions.length?sessions.map(s=>`<div class="timeline-item"><strong>${esc(s.session_date)} • ${hour(s.start_hour)}–${hour(s.end_hour)}</strong><small>${esc(s.coaching_type||'Coaching')} • ${esc(s.session_status)} • ${money(s.total_amount)} • Court: ${esc(s.court_name||'Not specified')}</small>${s.session_outcome_note?`<p>${esc(s.session_outcome_note)}</p>`:''}</div>`).join(''):'<div class="empty">No session history yet.</div>';await loadProgress()}
