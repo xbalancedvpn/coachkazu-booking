@@ -1,6 +1,6 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
-const db=window.supabase.createClient(URL,KEY),$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)];
 let reportRows=[],confirmationBlob=null,confirmationBooking=null,notifyTimer=null;
 const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{maximumFractionDigits:0});
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -89,7 +89,7 @@ async function loadNotifications(){
   if(!bell||!list)return;
   try{
     const [{data:inq,error:ie},{data:completed,error:be}]=await Promise.all([
-      db.from('inquiries').select('id,client_name,preferred_date,start_hour,end_hour,created_at,source_text').eq('status','new').order('created_at',{ascending:false}).limit(60),
+      db.from('inquiries').select('id,client_name,preferred_date,start_hour,end_hour,created_at,source_text,status').in('status',['new','waiting','tentative']).order('created_at',{ascending:false}).limit(60),
       db.from('bookings').select('id,client_name,session_date,start_hour,end_hour,total_amount,session_status').eq('status','confirmed').eq('session_status','completed').order('session_date',{ascending:false}).limit(80)
     ]);
     if(ie)throw ie;if(be)throw be;
@@ -151,7 +151,8 @@ function wireNotifications(){
   notifyTimer=setInterval(loadNotifications,60000);
 }
 function fitText(ctx,text,max,start,min=26){let s=start;while(s>min){ctx.font=`900 ${s}px Arial`;if(ctx.measureText(text).width<=max)return s;s-=2}return min}
-function rounded(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.closePath()}
+function rounded(ctx,x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else{ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r)}ctx.closePath()}
+function canvasToBlob(canvas){return new Promise((resolve,reject)=>{if(canvas.toBlob){canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Could not prepare the PNG image.')),'image/png',1);return}try{const data=canvas.toDataURL('image/png'),bin=atob(data.split(',')[1]),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);resolve(new Blob([arr],{type:'image/png'}))}catch(e){reject(e)}})}
 async function openConfirmationCard(id){
   try{
     const [{data:b,error:be},{data:p,error:pe}]=await Promise.all([
@@ -192,8 +193,8 @@ async function openConfirmationCard(id){
     ctx.fillStyle='#aaa';ctx.font='700 18px Arial';ctx.fillText('COURT FEE',110,945);ctx.fillStyle='#fff';ctx.font='900 24px Arial';ctx.fillText('Not included',330,945);
     rounded(ctx,72,1000,936,150,24);ctx.fillStyle='#101010';ctx.fill();ctx.fillStyle='#FFD600';ctx.font='900 20px Arial';ctx.fillText('COACH KAZU',105,1050);ctx.fillStyle='#ddd';ctx.font='700 18px Arial';ctx.fillText('Pickleball Coaching • Santiago City',105,1085);ctx.fillStyle='#888';ctx.font='700 16px Arial';ctx.fillText('Please message Coach Kazu on Facebook for changes or questions.',105,1120);
     ctx.fillStyle='#555';ctx.font='700 15px Arial';ctx.fillText('Generated from Coach Kazu Booking System',72,1278);ctx.textAlign='center';ctx.fillStyle='#666';ctx.font='700 13px Arial';ctx.fillText('© 2026 XBALANCED DIGITAL SOLUTIONS',540,1322);ctx.textAlign='left';
-    confirmationBlob=await new Promise(r=>canvas.toBlob(r,'image/png',1));
-    $('#bookingConfirmationDialog').showModal();
+    confirmationBlob=await canvasToBlob(canvas);
+    const dlg=$('#bookingConfirmationDialog');if(dlg.open)dlg.close();dlg.showModal();
   }catch(e){toast(e.message||'Could not create confirmation card.')}
 }
 function opsBlobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Could not prepare image.'));r.readAsDataURL(blob)})}
@@ -335,7 +336,13 @@ function init(){
   wireAdminMenu();wireNotifications();wireConfirmation();wireReport();
   $('#shareBookingLinkBtn')?.addEventListener('click',shareFreshBookingLink);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadNotifications()});
-  window.addEventListener('coach:data-changed',()=>{loadNotifications();if(reportRows.length)loadReport()});
+  window.addEventListener('coach:admin-ready',()=>{loadNotifications();if(reportRows.length)loadReport()});
+  window.addEventListener('coach:data-changed',e=>{
+    loadNotifications();
+    if(reportRows.length)loadReport();
+    const type=e.detail?.type,id=e.detail?.bookingId;
+    if(id&&(type==='booking-confirmed'||type==='manual-booking-created'))setTimeout(()=>openConfirmationCard(id),260);
+  });
   document.addEventListener('click',e=>{
     if(e.target.closest('[data-confirm],[data-wait],[data-cancel],#completeSessionBtn,#saveManualBooking')){
       setTimeout(()=>{loadNotifications();if(reportRows.length)loadReport()},900);
