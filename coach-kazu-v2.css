@@ -349,3 +349,127 @@ linear-gradient(145deg,#121212,#080808);border:1px solid rgba(245,179,1,.18);box
   .site-brand img{max-width:142px!important;max-height:32px!important}
   .hero-logo-frame .hero-photo{max-width:300px!important;max-height:280px!important}
 }
+
+
+/* =========================================================
+   COACH KAZU PUBLIC HERO + COURT FEE v32
+   Pickyla/Coach Kyle-inspired washed hero photo treatment.
+   ========================================================= */
+.hero{isolation:isolate}
+.hero-backdrop{
+  position:absolute;
+  z-index:0;
+  top:0;
+  right:0;
+  bottom:0;
+  width:58%;
+  overflow:hidden;
+  pointer-events:none;
+}
+.hero-backdrop img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center 42%;
+  display:block;
+  opacity:.88;
+  filter:saturate(.62) contrast(1.04) brightness(.78);
+  transform:scale(1.015);
+}
+.hero-backdrop-shade{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(90deg,#050505 0%,rgba(5,5,5,.94) 9%,rgba(5,5,5,.70) 26%,rgba(5,5,5,.30) 58%,rgba(5,5,5,.16) 100%),
+    linear-gradient(0deg,rgba(5,5,5,.82) 0%,transparent 34%),
+    linear-gradient(180deg,rgba(5,5,5,.26) 0%,transparent 22%);
+}
+.hero-content{z-index:4}
+.hero-brand-float{
+  position:absolute;
+  z-index:5;
+  right:4.5vw;
+  bottom:38px;
+  display:flex;
+  align-items:flex-end;
+  gap:14px;
+  pointer-events:none;
+}
+.hero-brand-float>img{
+  width:138px;
+  height:138px;
+  object-fit:contain;
+  filter:drop-shadow(0 18px 28px rgba(0,0,0,.58));
+  opacity:.94;
+}
+.hero-brand-float .hero-slogan{
+  position:static;
+  max-width:150px;
+  font-size:25px;
+  transform:rotate(-4deg);
+  text-align:left;
+  margin-bottom:16px;
+}
+.court-note{
+  line-height:1.65;
+}
+.court-note b{
+  color:var(--kz-gold-2);
+  font-weight:900;
+}
+@media(max-width:1050px){
+  .hero-backdrop{width:64%}
+  .hero-backdrop-shade{
+    background:
+      linear-gradient(90deg,#050505 0%,rgba(5,5,5,.92) 10%,rgba(5,5,5,.62) 42%,rgba(5,5,5,.23) 100%),
+      linear-gradient(0deg,rgba(5,5,5,.86) 0%,transparent 38%);
+  }
+  .hero-brand-float>img{width:112px;height:112px}
+  .hero-brand-float .hero-slogan{font-size:22px}
+}
+@media(max-width:760px){
+  .hero{
+    min-height:760px;
+    display:block;
+    padding-top:0;
+  }
+  .hero-backdrop{
+    top:0;
+    left:0;
+    right:0;
+    bottom:auto;
+    width:100%;
+    height:48%;
+  }
+  .hero-backdrop img{
+    object-position:center 34%;
+    opacity:.92;
+    filter:saturate(.68) contrast(1.03) brightness(.82);
+  }
+  .hero-backdrop-shade{
+    background:
+      linear-gradient(0deg,#050505 0%,rgba(5,5,5,.92) 15%,rgba(5,5,5,.48) 48%,rgba(5,5,5,.10) 100%),
+      linear-gradient(90deg,rgba(5,5,5,.18),transparent 65%);
+  }
+  .hero-content{
+    padding:330px 20px 54px!important;
+    max-width:none;
+  }
+  .hero-brand-float{
+    right:14px;
+    top:244px;
+    bottom:auto;
+    gap:8px;
+  }
+  .hero-brand-float>img{width:84px;height:84px;opacity:.92}
+  .hero-brand-float .hero-slogan{
+    display:none;
+  }
+}
+@media(max-width:430px){
+  .hero{min-height:745px}
+  .hero-backdrop{height:46%}
+  .hero-content{padding-top:315px!important}
+  .hero-brand-float{top:230px}
+  .hero-brand-float>img{width:76px;height:76px}
+}
