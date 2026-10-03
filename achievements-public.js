@@ -9,7 +9,7 @@ const placementClass=p=>'place-'+String(p||'other').toLowerCase().replace(/[^a-z
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n}
 function metaText(x){return [x.venue,niceDate(x.achievement_date)].filter(Boolean).join(' • ')}
 function inferPlatform(url){
- try{const h=new URL(url).hostname.toLowerCase();if(h.includes('youtube.com')||h.includes('youtu.be'))return'YouTube';if(h.includes('facebook.com')||h.includes('fb.watch'))return'Facebook';if(h.includes('tiktok.com'))return'TikTok';if(h.includes('instagram.com'))return'Instagram';return'Video'}catch{return'Video'}
+ try{const h=new window.URL(url).hostname.toLowerCase();if(h.includes('youtube.com')||h.includes('youtu.be'))return'YouTube';if(h.includes('facebook.com')||h.includes('fb.watch'))return'Facebook';if(h.includes('tiktok.com'))return'TikTok';if(h.includes('instagram.com'))return'Instagram';return'Video'}catch{return'Video'}
 }
 function fallbackMedia(cls){
  const wrap=el('div',(cls||'')+' achievement-brand-fallback');const logo=el('img');logo.src='assets/coach-kazu-favicon.webp?v=3';logo.alt='';wrap.append(logo,el('span','','COACH KAZU'),el('strong','','COMPETITION HIGHLIGHT'));return wrap;
