@@ -16,7 +16,7 @@ function validImage(file){
 }
 function inferPlatform(value){
  try{
-  const h=new URL(value).hostname.toLowerCase();
+  const h=new window.URL(value).hostname.toLowerCase();
   if(h.includes('youtube.com')||h.includes('youtu.be'))return'YouTube';
   if(h.includes('facebook.com')||h.includes('fb.watch'))return'Facebook';
   if(h.includes('tiktok.com'))return'TikTok';
@@ -25,7 +25,7 @@ function inferPlatform(value){
  }catch{return'Other'}
 }
 function normalizedVideoUrl(value){
- try{const u=new URL(String(value||'').trim());return ['http:','https:'].includes(u.protocol)?u.href:null}catch{return null}
+ try{const u=new window.URL(String(value||'').trim());return ['http:','https:'].includes(u.protocol)?u.href:null}catch{return null}
 }
 function addResultRow(data={}){
  const root=$('#achievementResultsEditor');if(!root)return;
