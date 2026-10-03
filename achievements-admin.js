@@ -55,7 +55,7 @@ function collectVideos(){
 }
 function renderCoverPreview(x=null){
  const root=$('#achievementCoverPreview'),removeBtn=$('#achievementRemoveCover');if(!root)return;
- if(coverPreviewUrl){URL.revokeObjectURL?.(coverPreviewUrl);coverPreviewUrl=null}
+ if(coverPreviewUrl){window.URL.revokeObjectURL?.(coverPreviewUrl);coverPreviewUrl=null}
  const file=$('#achievementFile')?.files?.[0];
  if(file){
   coverPreviewUrl=window.URL.createObjectURL(file);
