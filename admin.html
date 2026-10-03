@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="weekly-schedule.css?v=1">
   <link rel="stylesheet" href="post-session.css?v=1">
   <link rel="stylesheet" href="admin-media.css?v=1">
-  <link rel="stylesheet" href="achievements-admin.css?v=1">
+  <link rel="stylesheet" href="achievements-admin.css?v=2">
   <link rel="stylesheet" href="admin-ops.css?v=10">
   <link rel="stylesheet" href="admin-kazu-premium.css?v=2">
   <link rel="stylesheet" href="coach-kazu-date-picker.css?v=1">
@@ -96,25 +96,45 @@
 <section class="admin-flow-heading"><span class="eyebrow">PUBLIC CONTENT</span><h2>What clients see</h2><p>Manage shareable availability, achievements, homepage photos, and testimonial approvals.</p></section>
 <section class="panel" id="weeklyScheduleSection"><div class="panel-head"><div><span class="eyebrow">PUBLIC SHARING</span><h2>Weekly availability card</h2><p class="panel-note">Generate a Monday–Sunday schedule image for Messenger group chats and public sharing.</p></div></div><div class="weekly-tools"><label>Week starting Monday<input id="weeklyStart" type="date"></label><div class="weekly-nav"><button id="prevWeek" type="button">← Previous</button><button id="thisWeek" type="button">This Week</button><button id="nextWeek" type="button">Next →</button></div><button id="generateWeeklySchedule" class="weekly-generate" type="button">Generate Weekly Schedule</button></div><div id="weeklyRange" class="weekly-summary"></div><div id="weeklySummary" class="weekly-summary"></div><div class="privacy-note"><b>Privacy-safe:</b> the shared card only shows <strong>Available</strong>, <strong>Unavailable</strong>, and <strong>Past</strong>. Client names, contacts, payment details, and booking reasons are never included.</div></section>
 <section class="panel achievement-admin-panel" id="achievementsAdminSection">
-  <div class="panel-head"><div><span class="eyebrow">ACHIEVEMENTS & HIGHLIGHTS</span><h2>Competition record & milestones</h2><p class="panel-note">Upload achievements here and choose which ones appear on the public site. The featured item becomes the large homepage highlight.</p></div><button id="refreshAchievementsBtn" class="ghost" type="button">Refresh</button></div>
+  <div class="panel-head"><div><span class="eyebrow">ACHIEVEMENTS & HIGHLIGHTS</span><h2>Tournament record & career highlights</h2><p class="panel-note">Create one event, then add all results, optional photos and video links under it. Photos are optional; videos are link-only.</p></div><button id="refreshAchievementsBtn" class="ghost" type="button">Refresh</button></div>
   <form id="achievementForm" class="achievement-form">
     <input id="achievementId" type="hidden">
     <div class="achievement-form-grid">
-      <label class="achievement-span-2">Achievement title<input id="achievementTitle" type="text" maxlength="160" required placeholder="e.g. GPP Cup 2026 Champion"></label>
-      <label>Type<select id="achievementType" required><option>Champion</option><option>Runner-up</option><option>Podium</option><option>Medal</option><option selected>Tournament</option><option>Certification</option><option>Coaching Milestone</option><option>Special Recognition</option></select></label>
-      <label>Date<input id="achievementDate" type="date" data-date-title="Achievement date"></label>
-      <label>Event / Tournament<input id="achievementEvent" type="text" maxlength="160" placeholder="Event name"></label>
-      <label>Venue<input id="achievementVenue" type="text" maxlength="160" placeholder="Venue / city"></label>
-      <label class="achievement-span-2">Short description<textarea id="achievementDescription" rows="4" maxlength="1200" placeholder="What was achieved, division/category, partner, or why this milestone matters."></textarea></label>
-      <label class="achievement-span-2">Achievement image <span id="achievementFileHint">(required for new achievement)</span><input id="achievementFile" type="file" accept="image/jpeg,image/png,image/webp"></label>
+      <label class="achievement-span-2">Tournament / Event name<input id="achievementTitle" type="text" maxlength="160" required placeholder="e.g. 1st GP CUP 2026"></label>
+      <label>Date <span style="color:#666;font-weight:600">(optional)</span><input id="achievementDate" type="date" data-date-title="Achievement date"></label>
+      <label>Venue / Location <span style="color:#666;font-weight:600">(optional)</span><input id="achievementVenue" type="text" maxlength="160" placeholder="Court, city or venue"></label>
+      <label class="achievement-span-2">Short event note <span style="color:#666;font-weight:600">(optional)</span><textarea id="achievementDescription" rows="3" maxlength="1200" placeholder="Optional context about the tournament, partner, milestone or event."></textarea></label>
     </div>
+
+    <div class="achievement-subsection">
+      <div class="achievement-subsection-head"><div><h3>Results</h3><p>Add every division / placement earned in this event.</p></div><button id="addAchievementResult" class="achievement-mini-btn" type="button">+ Add Result</button></div>
+      <div id="achievementResultsEditor" class="achievement-result-editor"></div>
+    </div>
+
+    <div class="achievement-subsection">
+      <div class="achievement-subsection-head"><div><h3>Cover Photo</h3><p>Optional. JPG/JPEG or PNG only, maximum 5 MB. Replace or remove it anytime without deleting the event.</p></div></div>
+      <div id="achievementCoverPreview" class="achievement-cover-preview"><div class="achievement-cover-empty">No cover photo selected.</div></div>
+      <div class="achievement-cover-actions"><input id="achievementFile" type="file" accept="image/jpeg,image/png"><button id="achievementRemoveCover" class="ghost" type="button" style="display:none">Remove Cover</button></div>
+    </div>
+
+    <div class="achievement-subsection">
+      <div class="achievement-subsection-head"><div><h3>Photo Gallery</h3><p>Optional. Add up to 8 additional JPG/PNG photos per event, maximum 5 MB each.</p></div></div>
+      <input id="achievementGalleryFile" type="file" accept="image/jpeg,image/png" multiple>
+      <div id="achievementGalleryManager" class="achievement-gallery-manager"><div class="achievement-media-empty">No additional gallery photos yet.</div></div>
+    </div>
+
+    <div class="achievement-subsection">
+      <div class="achievement-subsection-head"><div><h3>Video Links</h3><p>No video files are uploaded to the website. Paste Facebook, YouTube, TikTok or Instagram links only.</p></div><button id="addAchievementVideo" class="achievement-mini-btn" type="button">+ Add Video Link</button></div>
+      <div id="achievementVideosEditor" class="achievement-video-editor"></div>
+    </div>
+
     <div class="achievement-options">
       <label><input id="achievementPublished" type="checkbox" checked> Show on public site</label>
-      <label><input id="achievementFeaturedFlag" type="checkbox"> Feature as main highlight</label>
+      <label><input id="achievementFeaturedFlag" type="checkbox"> Feature in career highlights</label>
     </div>
-    <div class="achievement-form-actions"><button id="achievementSaveBtn" class="primary" type="submit">Add Achievement</button><button id="achievementCancelEdit" class="ghost" type="button" style="display:none">Cancel Edit</button></div>
+    <div class="achievement-form-actions"><button id="achievementSaveBtn" class="primary" type="submit">Add Event</button><button id="achievementCancelEdit" class="ghost" type="button" style="display:none">Cancel Edit</button></div>
   </form>
-  <div id="achievementAdminList" class="achievement-admin-list"><div class="empty">Loading achievements…</div></div>
+  <div id="achievementAdminList" class="achievement-admin-list"><div class="empty">Loading achievement events…</div></div>
 </section>
 <section class="media-admin-grid" id="mediaSection">
   <section class="panel"><div class="panel-head"><div><span class="eyebrow">HOMEPAGE MEDIA</span><h2>Photo carousel</h2><p class="panel-note">Manual upload only. Add, hide, delete, reorder, and optionally caption homepage photos.</p></div><button id="refreshMediaBtn" class="ghost" type="button">Refresh</button></div><form id="galleryUploadForm" class="media-upload"><label>Image<input id="galleryFile" type="file" accept="image/jpeg,image/png,image/webp" required></label><label>Optional caption<textarea id="galleryCaption" rows="2" maxlength="180" placeholder="Optional caption"></textarea></label><button id="galleryUploadBtn" class="primary" type="submit">Upload to Carousel</button></form><div id="galleryAdminList" class="media-items"><div class="empty">Loading gallery…</div></div></section>
@@ -195,7 +215,7 @@
 <script src="weekly-schedule.js?v=17"></script>
 <script src="post-session.js?v=2"></script>
 <script src="admin-media.js?v=3"></script>
-<script src="achievements-admin.js?v=1"></script>
+<script src="achievements-admin.js?v=2"></script>
 <script src="admin-ops.js?v=28"></script>
 <script src="coach-kazu-date-picker.js?v=1"></script>
 
