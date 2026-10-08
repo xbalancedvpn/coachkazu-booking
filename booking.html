@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="coach-kazu-v2.css?v=36">
   <link rel="stylesheet" href="public-extras.css?v=1">
   <link rel="stylesheet" href="achievements-public.css?v=2">
+  <link rel="stylesheet" href="real-trophies-public.css?v=1">
   <link rel="stylesheet" href="coach-kazu-date-picker.css?v=1">
   <link rel="manifest" href="site.webmanifest?v=2">
   <link rel="icon" type="image/webp" href="assets/coach-kazu-favicon.webp?v=3">
@@ -20,7 +21,7 @@
 <body>
 <header class="site-header">
   <a class="site-brand" href="#home" aria-label="Coach Kazu home"><img src="assets/coach-kazu-wordmark.webp?v=3" alt="Coach Kazu"></a>
-  <nav class="nav" id="nav"><a href="#home">Home</a><a href="#coach">About</a><a href="#achievementsSection">Achievements</a><a href="#rates">Coaching</a><a href="#booking">Schedule</a><a href="#rates">Rates</a><a href="#testimonials">Testimonials</a><a href="#contactSection">Contact</a></nav>
+  <nav class="nav" id="nav"><a href="#home">Home</a><a href="#coach">About</a><a href="#achievementsSection">Achievements</a><a href="#realTrophiesSection">Real Trophies</a><a href="#rates">Coaching</a><a href="#booking">Schedule</a><a href="#rates">Rates</a><a href="#testimonials">Testimonials</a><a href="#contactSection">Contact</a></nav>
   <div class="header-actions"><a class="icon-btn" href="admin.html" aria-label="Admin login" title="Admin login">🔒</a><a class="book-small" href="#booking">Book a Session →</a><button class="menu-btn" id="menuBtn" type="button" aria-label="Menu">☰</button></div>
 </header>
 <main>
@@ -82,10 +83,46 @@
     </div>
   </div>
 </dialog>
+
+<section class="section dark real-trophies-section hidden-public" id="realTrophiesSection">
+  <div id="realTrophyCover" class="real-trophy-cover">
+    <div class="real-trophy-cover-copy">
+      <span class="real-trophy-kicker">STUDENT PODIUM LEGACY</span>
+      <h2>THE REAL<br>TROPHIES</h2>
+      <p class="real-trophy-quote">“The greatest trophies are the players who rise to the podium.”</p>
+      <span class="real-trophy-by">— COACH KAZU</span>
+      <p class="real-trophy-intro">Celebrating the students and athletes whose training, discipline, and hard work led them to podium finishes.</p>
+    </div>
+  </div>
+  <div class="real-trophy-stats">
+    <div class="real-trophy-stat"><strong id="realTrophyPodiumCount">0</strong><span>Podium Highlights</span></div>
+    <div class="real-trophy-stat"><strong id="realTrophyChampionCount">0</strong><span>Champion Finishes</span></div>
+  </div>
+  <div id="realTrophyGrid" class="real-trophy-grid"></div>
+  <div class="real-trophy-actions"><button id="realTrophyToggle" class="real-trophy-toggle" type="button" aria-expanded="false">View All Podium Finishers</button></div>
+</section>
+<dialog id="realTrophyDialog" class="real-trophy-dialog">
+  <div class="real-trophy-dialog-card">
+    <button id="closeRealTrophyDialog" class="real-trophy-dialog-close" type="button" aria-label="Close">×</button>
+    <div class="real-trophy-dialog-media">
+      <img id="realTrophyDialogMain" class="real-trophy-dialog-main" src="" alt="">
+      <div id="realTrophyDialogFallback" class="real-trophy-dialog-fallback" style="display:none"><span>🏆</span><strong>COACH KAZU</strong></div>
+      <div id="realTrophyDialogThumbs" class="real-trophy-dialog-thumbs"></div>
+    </div>
+    <div class="real-trophy-dialog-copy">
+      <span id="realTrophyDialogPlace" class="real-trophy-dialog-place"></span>
+      <h3 id="realTrophyDialogName"></h3>
+      <div id="realTrophyDialogEvent" class="real-trophy-dialog-event"></div>
+      <div id="realTrophyDialogMeta" class="real-trophy-dialog-meta"></div>
+      <p id="realTrophyDialogCaption" class="real-trophy-dialog-caption"></p>
+    </div>
+  </div>
+</dialog>
+
 <section class="section dark" id="rates"><div class="section-head"><span class="eyebrow">Coaching Rates</span><h2>Train More. Play Better.</h2><p>Hourly coaching fee. Court fee is separate.</p></div><div class="rates-grid"><article class="rate-card"><strong>1-on-1</strong><div class="price">₱700</div><small>per hour</small></article><article class="rate-card"><strong>Additional Player</strong><div class="price">+₱200</div><small>each additional player / hour</small></article></div><div class="court-note"><strong>Court fee is separate.</strong> Typical court fee is around <b>₱100–₱600</b>, depending on the selected court, time slot, and number of players. Exact court fee will be confirmed with the booking.</div></section>
 <section class="section dark media-section hidden-public" id="gallerySection"><div class="section-head"><span class="eyebrow">Training Moments</span><h2>On court with Coach Kazu.</h2><p>Photos uploaded and managed directly by Coach Kazu.</p></div><div id="galleryCarousel" class="gallery-carousel"></div><div id="galleryDots" class="gallery-dots"></div></section>
 <section class="section light" id="testimonials"><div class="section-head"><span class="eyebrow">Player Testimonials</span><h2>What players say.</h2><p>Only testimonials reviewed and approved by Coach Kazu are displayed.</p></div><div id="testimonialList" class="testimonial-list"><div class="testimonial-empty">Loading testimonials…</div></div><div class="testimonial-submit"><div><span class="eyebrow">SHARE YOUR EXPERIENCE</span><h3>Write a testimonial</h3><p>Your testimonial will be reviewed by Coach Kazu before it appears publicly. You may choose to display it anonymously.</p></div><form id="testimonialForm"><label>Player name<input id="testimonialName" type="text" maxlength="100" required placeholder="Your name"></label><label>Rating<select id="testimonialRating" required><option value="5">5 - Excellent</option><option value="4">4 - Very Good</option><option value="3">3 - Good</option><option value="2">2 - Fair</option><option value="1">1 - Needs Improvement</option></select></label><label>Your testimonial<textarea id="testimonialQuote" rows="5" minlength="10" maxlength="1200" required placeholder="Share your coaching experience…"></textarea></label><label class="anon-row"><input id="testimonialAnonymous" type="checkbox"> Show as Anonymous when published</label><button id="testimonialSubmitBtn" class="btn primary" type="submit">Submit Testimonial</button><div id="testimonialStatus" class="testimonial-status" aria-live="polite"></div></form></div></section>
 <section class="section light booking-flow" id="howBooking"><div class="section-head"><span class="eyebrow">How Booking Works</span><h2>Simple from request to confirmation.</h2><p>Choose an available schedule, send your request, then wait for Coach Kazu to confirm the session.</p></div><div class="booking-steps"><article class="booking-step"><b>1</b><strong>Choose your schedule</strong><p>Select a date and consecutive available hours. Duration and fee are calculated automatically.</p></article><article class="booking-step"><b>2</b><strong>Send your request</strong><p>Add your name, contact, number of players, and coaching goal, then submit the request.</p></article><article class="booking-step"><b>3</b><strong>Coach confirms</strong><p>Coach Kazu reviews the request and confirms the booking. Your selected hours are blocked once confirmed.</p></article></div></section>
 <section class="section light" id="booking"><div class="section-head"><span class="eyebrow">Live Schedule</span><h2>Book Your Session.</h2><p>Select your preferred date, then tap one or more consecutive available hour blocks. Duration and fee are calculated automatically.</p></div><div class="booking-shell"><div class="calendar-card"><div class="field"><label for="date">Date</label><input id="date" type="date" data-date-title="Choose coaching date"></div><div id="availabilityStatus" class="status">Checking live availability…</div><div class="availability-tools"><button id="refreshAvailability" class="schedule-refresh" type="button">↻ Refresh schedule</button><small id="availabilityUpdated">Live schedule</small></div><div class="field"><label>Select hours</label><div id="hourSlots" class="slot-grid"></div></div></div><div class="request-card"><div class="field"><label for="name">Booking name</label><input id="name" type="text" maxlength="120" autocomplete="name" placeholder="First name and last name"></div><div class="field"><label for="contact">Contact</label><input id="contact" type="text" maxlength="120" autocomplete="tel" placeholder="Messenger or mobile number"></div><div class="field"><label for="players">Number of players</label><select id="players"></select></div><div class="field"><label for="court">Court</label><select id="court"><option value="">Select court</option><option value="NANOMOLY">NANOMOLY</option><option value="DINK VALLEY">DINK VALLEY</option><option value="HOMECOURT">HOMECOURT</option><option value="CASA PLAY">CASA PLAY</option><option value="OTHERS">OTHERS</option></select></div><div class="field" id="courtOtherWrap" style="display:none"><label for="courtOther">Other court</label><input id="courtOther" type="text" maxlength="120" placeholder="Enter court name"></div><div class="field"><label for="goal">Main goal</label><select id="goal"><option value="General coaching">General coaching</option><option value="Beginner fundamentals">Beginner fundamentals</option><option value="Serve and return">Serve and return</option><option value="Footwork">Footwork</option><option value="Dinking and kitchen play">Dinking and kitchen play</option><option value="Consistency">Consistency</option><option value="Game strategy">Game strategy</option><option value="Tournament preparation">Tournament preparation</option></select></div><div id="requestSummary" class="request-summary"><strong>Current request</strong></div><div class="request-actions"><button id="sendRequest" class="btn primary" type="button">Send Request</button><button id="copyMessenger" class="btn secondary" type="button">Copy & Open Messenger</button></div><button id="startNewRequest" class="start-new-request hidden-request-action" type="button">Start New Request</button></div></div></section>
 <section class="contact-bar" id="contactSection"><div><span class="eyebrow" style="color:#111">Coach Kazu</span><h3>Ready to work on your game?</h3></div><div class="contact-links"><a href="https://www.facebook.com/kazerguzmann" target="_blank" rel="noopener">Message on Facebook</a></div></section>
-</main><footer class="footer"><div class="footer-brand"><img src="assets/coach-kazu-wordmark.webp?v=3" alt="Coach Kazu"><span>Pickleball Coaching • Santiago City</span></div><div class="xbalanced-credit"><span>© 2026 XBALANCED DIGITAL SOLUTIONS</span><span>Developed by <strong>ELDWIN GASPAR</strong></span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="coach-kazu-v2.js?v=21"></script><script src="public-extras.js?v=3"></script><script src="achievements-public.js?v=2"></script><script src="coach-kazu-date-picker.js?v=1"></script></body></html>
+</main><footer class="footer"><div class="footer-brand"><img src="assets/coach-kazu-wordmark.webp?v=3" alt="Coach Kazu"><span>Pickleball Coaching • Santiago City</span></div><div class="xbalanced-credit"><span>© 2026 XBALANCED DIGITAL SOLUTIONS</span><span>Developed by <strong>ELDWIN GASPAR</strong></span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="coach-kazu-v2.js?v=21"></script><script src="public-extras.js?v=3"></script><script src="achievements-public.js?v=2"></script><script src="real-trophies-public.js?v=1"></script><script src="coach-kazu-date-picker.js?v=1"></script></body></html>
