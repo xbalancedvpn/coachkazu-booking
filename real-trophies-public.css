@@ -1,3 +1,4 @@
+.real-trophies-section.hidden-public{display:none!important}
 
 .real-trophies-section{position:relative;overflow:hidden;background:#090909!important;color:#fff}
 .real-trophy-cover{position:relative;min-height:430px;display:flex;align-items:flex-end;padding:clamp(32px,6vw,74px);border-radius:26px;overflow:hidden;background:radial-gradient(circle at 15% 20%,rgba(255,190,0,.25),transparent 35%),linear-gradient(135deg,#18130a,#080808 70%);background-size:cover;background-position:center;margin-bottom:28px}
