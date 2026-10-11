@@ -388,7 +388,7 @@ function isSessionEarly(b){const now=new Date(),d=ymd(now);if(String(b.session_d
 function bookingCard(b,todayMode=false,pastMode=false){
   const paid=Number(b.paid??paymentTotals.get(b.id)??0),total=Number(b.total_amount||0),bal=Math.max(0,total-paid),payState=bal<=0?'Paid':paid>0?'Partial':'Unpaid',done=b.session_status==='completed',early=!done&&isSessionEarly(b),completedEarly=wasCompletedEarly(b),completeLabel=early?'Complete Early':'Mark Completed';
   const completionBtn=!done?`<button class="mini confirm" data-complete="${b.id}">${completeLabel}</button>`:'';
-  const paymentBtn=bal>0?`<button class="mini" data-payment="${b.id}">Record Payment</button>`:'';
+  const paymentBtn=bal>0?`<button class="mini" data-payment="${b.id}">Record Payment</button>`:`<button class="mini tip-action" data-add-tip="${b.id}">+ Add Tip</button>`;
   const stateLabel=pastMode&&!done?'Past • Needs Completion':completedEarly?'Completed Early':(b.session_status||'scheduled');
   const cardClass=pastMode?' past-session-card':'';
   const stateClass=pastMode&&!done?' past-due':completedEarly?' completed-early':'';
@@ -401,6 +401,7 @@ function renderBookings(upcoming,todays,pastPending=[]){
   [...upcoming,...todays,...pastPending].forEach(b=>{
     document.querySelectorAll(`[data-cancel-booking="${b.id}"]`).forEach(x=>x.onclick=()=>cancelBooking(b));
     document.querySelectorAll(`[data-payment="${b.id}"]`).forEach(x=>x.onclick=()=>openPayment(b));
+    document.querySelectorAll(`[data-add-tip="${b.id}"]`).forEach(x=>x.onclick=()=>openPayment(b,true));
     document.querySelectorAll(`[data-complete="${b.id}"]`).forEach(x=>x.onclick=()=>setSessionStatus(b,'completed'));
   });
   applyListPreview('#bookings','.booking-card','#toggleUpcomingBookings','upcoming');
@@ -423,7 +424,12 @@ async function setSessionStatus(b,status){
   window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'session-status',bookingId:b.id,status}}));
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:keepScroll,left:0,behavior:'auto'})));
 }
-function openPayment(b){activePaymentBooking=b;const paid=paymentTotals.get(b.id)||0,total=Number(b.total_amount||0),bal=Math.max(0,total-paid);$('#paymentTitle').textContent=b.client_name;$('#paymentMeta').innerHTML=`${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}`;$('#paymentTotal').textContent=money(total);$('#paymentPaid').textContent=money(paid);$('#paymentBalance').textContent=money(bal);$('#paymentAmount').value=bal||'';$('#paymentAmount').max=bal;$('#paymentDate').value=ymd(new Date());$('#paymentNote').value='';$('#paymentDialog').showModal()}
+function updateTipPreview(){const enabled=$('#paymentTipEnabled').checked;$('#paymentTipFields').hidden=!enabled;const fee=Number($('#paymentAmount').value||0),tip=enabled?Number($('#paymentTipAmount').value||0):0;const fmt=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});$('#paymentPreviewCoaching').textContent=fmt(fee);$('#paymentPreviewTip').textContent=fmt(tip);$('#paymentPreviewTotal').textContent=fmt(fee+tip)}
+$('#paymentTipEnabled').addEventListener('change',updateTipPreview);
+$('#paymentTipAmount').addEventListener('input',updateTipPreview);
+$('#paymentAmount').addEventListener('input',updateTipPreview);
+$('#paymentMethod').addEventListener('change',()=>{const m=$('#paymentMethod').value;if(['Cash','GCash'].includes(m))$('#paymentTipMethod').value=m});
+function openPayment(b,tipOnly=false){activePaymentBooking=b;const paid=paymentTotals.get(b.id)||0,total=Number(b.total_amount||0),bal=Math.max(0,total-paid);$('#paymentTitle').textContent=(tipOnly?'Add Tip • ':'Record Payment • ')+b.client_name;$('#paymentMeta').innerHTML=`${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}`;$('#paymentTotal').textContent=money(total);$('#paymentPaid').textContent=money(paid);$('#paymentBalance').textContent=money(bal);$('#paymentAmount').value=tipOnly?'0':(bal||'');$('#paymentAmount').max=bal;$('#paymentAmount').min='0';$('#paymentDate').value=ymd(new Date());$('#paymentNote').value='';$('#paymentTipEnabled').checked=!!tipOnly;$('#paymentTipAmount').value='';$('#paymentTipMethod').value=['Cash','GCash'].includes($('#paymentMethod').value)?$('#paymentMethod').value:'Cash';updateTipPreview();$('#paymentDialog').showModal()}
 async function loadPaymentFollowups(){
   const list=$('#paymentFollowupList'),count=$('#paymentFollowupCount');
   if(!list)return;
@@ -470,22 +476,28 @@ async function loadCompletedSessions(){
   if(count)count.textContent=String(rows.length);
   list.innerHTML=rows.length?rows.map(b=>{
     const early=wasCompletedEarly(b);
-    return `<article class="card completed-session-card"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(b.total_amount)} collected<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}</div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment paid">Paid</span></div></div><div class="card-actions"><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
+    return `<article class="card completed-session-card"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(b.total_amount)} collected<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}</div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment paid">Paid</span></div></div><div class="card-actions"><button class="mini tip-action" data-completed-tip="${b.id}">+ Add Tip</button><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
   }).join(''):'<div class="empty">No fully settled completed sessions yet.</div>';
+  rows.forEach(b=>document.querySelectorAll(`[data-completed-tip="${b.id}"]`).forEach(btn=>btn.onclick=()=>{paymentTotals.set(b.id,b.paid);openPayment(b,true)}));
   applyListPreview('#completedSessionsList','.completed-session-card','#toggleCompletedSessions','completed');
 }
 $('#savePaymentBtn').onclick=savePayment;
 async function savePayment(){
-  const b=activePaymentBooking;if(!b)return;
-  const amount=Number($('#paymentAmount').value||0),paid=paymentTotals.get(b.id)||0,bal=Math.max(0,Number(b.total_amount||0)-paid);
-  if(amount<=0)return toast('Enter a valid payment amount.');
-  if(amount>bal)return toast('Payment cannot be greater than the remaining balance.');
-  const {error}=await db.from('booking_payments').insert({booking_id:b.id,amount,paid_at:$('#paymentDate').value,payment_method:$('#paymentMethod').value,note:$('#paymentNote').value.trim()||null,source:'manual'});
-  if(error)return toast(error.message);
-  $('#paymentDialog').close();
-  toast('Payment recorded.');
+ const b=activePaymentBooking;if(!b)return;
+ const amount=Number($('#paymentAmount').value||0),enabled=$('#paymentTipEnabled').checked,tip=enabled?Number($('#paymentTipAmount').value||0):0;
+ const valid=n=>Number.isFinite(n)&&n>=0&&Math.abs(n*100-Math.round(n*100))<0.00001;
+ const bal=Math.max(0,Number(b.total_amount||0)-(paymentTotals.get(b.id)||0));
+ if(!valid(amount)||!valid(tip)||enabled&&tip<=0||amount+tip<=0)return toast('Enter a valid received coaching payment or tip.');
+ if(amount>bal+0.001)return toast('Coaching payment exceeds the balance. Tips are separate.');
+ const date=$('#paymentDate').value||ymd(new Date()),method=$('#paymentTipMethod').value;
+ if(tip>0&&!['Cash','GCash'].includes(method))return toast('Choose Cash or GCash for tip.');
+ const btn=$('#savePaymentBtn');if(btn.disabled)return;btn.disabled=true;
+ try{
+  const {error}=await db.from('booking_payments').insert({booking_id:b.id,amount,tip_amount:tip,tip_payment_method:tip>0?method:null,tip_received_at:tip>0?date:null,paid_at:date,payment_method:amount>0?$('#paymentMethod').value:method,note:$('#paymentNote').value.trim()||null,source:amount>0?'manual':'tip'});
+  if(error)throw error;$('#paymentDialog').close();toast(tip>0?'Received tip saved.':'Payment saved.');
   await Promise.all([loadBookings(),loadPaymentFollowups(),loadCompletedSessions(),loadClients()]);
   window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'payment',bookingId:b.id}}));
+ }catch(e){toast(e.message||'Could not save.')}finally{btn.disabled=false}
 }
 const manualBookingState={slots:new Map(),autoAmount:0,rateOverridden:false};
 function manualBookingRate(players){const n=Math.max(1,Number(players)||1);return 700+((n-1)*200)}
