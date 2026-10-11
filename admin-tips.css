@@ -1,0 +1,42 @@
+/* Coach Kazu: admin-only payment tips, finance totals and received-tip ledger */
+.payment-tip-panel{margin:12px 0;padding:13px;border:1px solid rgba(255,214,0,.35);border-radius:12px;background:rgba(255,214,0,.055)}
+.payment-tip-toggle{display:flex!important;flex-direction:row!important;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;margin:0!important}
+.payment-tip-toggle span{display:flex;flex-direction:column;gap:4px}
+.payment-tip-toggle strong{font-size:14px;font-weight:800;color:inherit}
+.payment-tip-toggle small{font-size:12px;line-height:1.45;opacity:.7}
+.payment-tip-toggle input[type=checkbox]{height:19px;width:19px;min-width:19px;margin:0;accent-color:#ffd600}
+.payment-tip-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px}
+.payment-tip-fields[hidden],#tipHistoryToggleWrap[hidden]{display:none!important}
+.payment-tip-fields label{min-width:0}
+.payment-tip-preview{border:1px solid rgba(255,255,255,.11);border-radius:12px;padding:11px 13px;background:rgba(255,255,255,.035);display:grid;gap:8px;font-size:13px}
+.payment-tip-preview>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.payment-tip-preview span{opacity:.78}
+.payment-tip-preview strong{font-variant-numeric:tabular-nums}
+.payment-tip-preview .payment-tip-total{border-top:1px solid rgba(255,255,255,.13);padding-top:10px;font-size:15px}
+.payment-tip-total strong{color:#ffd600}
+.tip-action{border-color:rgba(255,214,0,.45)!important}
+.tip-finance-group{margin:16px 0 12px;padding:15px;border:1px solid rgba(255,214,0,.26);border-radius:15px;background:rgba(255,214,0,.045)}
+.tip-finance-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin-bottom:12px}
+.tip-finance-heading small{font-size:12px;opacity:.72}
+.tip-finance-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tip-finance-metrics article{min-width:0;padding:14px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:rgba(0,0,0,.16);display:flex;flex-direction:column;gap:7px}
+.tip-finance-metrics span{font-size:12px;opacity:.78}
+.tip-finance-metrics strong{font-size:clamp(18px,2vw,26px);font-weight:900;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tip-finance-metrics .tip-finance-total{border-color:rgba(255,214,0,.5)}
+.tip-finance-metrics .tip-finance-total strong{color:#ffd600}
+.tip-history{margin:18px 0;padding:15px;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:rgba(255,255,255,.025)}
+.tip-history-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.tip-history-head h3{margin:4px 0;font-size:19px}
+.tip-history-head h3 span{font-size:13px;opacity:.65}
+.tip-history-head p{margin:3px 0 0;font-size:12px;opacity:.7}
+.tip-history-list{display:grid;gap:8px}
+.tip-history-row{display:flex;align-items:center;gap:12px;justify-content:space-between;background:rgba(0,0,0,.14);padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:11px}
+.tip-history-details{display:grid;gap:4px;flex:1;min-width:0}
+.tip-history-details strong{overflow-wrap:anywhere}
+.tip-history-details small{font-size:12px;opacity:.72;line-height:1.45}
+.tip-history-amount{font-size:16px;font-weight:900;color:#ffd600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tip-history #tipHistoryToggleWrap{margin-top:10px}
+.tip-edit-hint{font-size:12px;opacity:.72;line-height:1.5}
+.tip-edit-actions{flex-wrap:wrap}
+.tip-edit-actions .tip-remove{margin-right:auto;border-color:rgba(239,68,68,.6);color:#fca5a5}
+@media(max-width:700px){.payment-tip-fields{grid-template-columns:1fr}.tip-finance-metrics{grid-template-columns:1fr}.tip-history-row{flex-wrap:wrap}.tip-history-details{flex-basis:100%}.tip-history-amount{margin-right:auto}.tip-finance-group,.tip-history{padding:12px}}
