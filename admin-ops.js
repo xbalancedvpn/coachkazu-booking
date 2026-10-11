@@ -1,7 +1,7 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
 const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-let reportRows=[],confirmationBlob=null,confirmationBooking=null,notifyTimer=null,notifyRequestSeq=0;
+let reportRows=[],reportTipRows=[],tipHistoryExpanded=false,tipEditRowId=null,tipEditBusy=false,confirmationBlob=null,confirmationBooking=null,notifyTimer=null,notifyRequestSeq=0;
 const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{maximumFractionDigits:0});
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hour=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`;
@@ -237,7 +237,7 @@ async function loadReport(){
   const from=$('#reportFrom').value,to=$('#reportTo').value,filter=$('#reportStatus').value;
   if(!from||!to)return toast('Select a report date range.');
   if(from>to)return toast('Start date must be before end date.');
-  $('#reportTable').innerHTML='<div class="empty">Generating report…</div>';
+  $('#reportTable').innerHTML='<div class="empty">Generating report…</div>';reportTipRows=[];tipHistoryExpanded=false;
   try{
     const {data:bookings,error}=await db.from('bookings').select('*').eq('status','confirmed').gte('session_date',from).lte('session_date',to).order('session_date').order('start_hour');
     if(error)throw error;
@@ -249,6 +249,14 @@ async function loadReport(){
     }
     reportRows=(bookings||[]).map(b=>{const total=Number(b.total_amount||0),paid=paidMap.get(b.id)||0;return {...b,total,paid,balance:Math.max(0,total-paid)}});
 
+    const [tipsResult,receiptsResult]=await Promise.all([
+      db.from('booking_payments').select('id,booking_id,amount,tip_amount,tip_payment_method,tip_received_at,note,bookings!inner(client_name,session_date,status)').gt('tip_amount',0).gte('tip_received_at',from).lte('tip_received_at',to).eq('bookings.status','confirmed').order('tip_received_at',{ascending:false}),
+      db.from('booking_payments').select('amount,bookings!inner(status)').gte('paid_at',from).lte('paid_at',to).eq('bookings.status','confirmed')
+    ]);
+    if(tipsResult.error)throw tipsResult.error;if(receiptsResult.error)throw receiptsResult.error;
+    reportTipRows=(tipsResult.data||[]).map(p=>({...p,client_name:p.bookings?.client_name||'Client',session_date:p.bookings?.session_date||'',tip_amount:Number(p.tip_amount||0)}));
+    const tipsReceived=reportTipRows.reduce((sum,p)=>sum+p.tip_amount,0);
+    const coachingReceived=(receiptsResult.data||[]).reduce((sum,p)=>sum+Number(p.amount||0),0);
     const all=reportRows,shown=all.filter(r=>reportFilterMatch(r,filter));
     const confirmedValue=all.reduce((s,r)=>s+r.total,0);
     const collected=all.reduce((s,r)=>s+r.paid,0);
@@ -266,11 +274,34 @@ async function loadReport(){
     $('#reportAdvance').textContent=money(advance);
     $('#reportPaidBreakdown').textContent=`${paidFull.length} fully paid (${paidCompleted} completed • ${prepaid} prepaid)`;
     $('#reportRangeLabel').textContent=`${from} to ${to} • ${shown.length} of ${all.length} sessions`;
+    $('#reportCoachingReceipts').textContent=money(coachingReceived);$('#reportTipTotal').textContent=money(tipsReceived);$('#reportTotalReceived').textContent=money(coachingReceived+tipsReceived);renderTipHistory();
 
     renderReportTable(shown);
     drawIncomeChart(all,from,to);
     drawSizeChart(all);
   }catch(e){$('#reportTable').innerHTML=`<div class="empty">${esc(e.message)}</div>`}
+}
+function tipFormat(v){return '₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function renderTipHistory(){
+ const rows=reportTipRows,visible=tipHistoryExpanded?rows:rows.slice(0,3);
+ $('#tipHistoryCount').textContent='('+rows.length+')';$('#tipHistoryToggleWrap').hidden=rows.length<=3;$('#tipHistoryToggle').textContent=tipHistoryExpanded?'Show Less':'Show All';
+ $('#tipHistoryList').innerHTML=visible.length?visible.map(r=>'<article class="tip-history-row"><div class="tip-history-details"><strong>'+esc(r.client_name)+'</strong><small>Received '+esc(r.tip_received_at||'')+' • '+esc(r.tip_payment_method||'')+' • Session '+esc(r.session_date||'')+'</small></div><div class="tip-history-amount">'+tipFormat(r.tip_amount)+'</div><button class="mini" type="button" data-tip-edit="'+esc(r.id)+'">Edit Tip</button></article>').join(''):'<div class="empty">No tips recorded in this period.</div>';
+}
+function openTipEdit(id){const r=reportTipRows.find(x=>String(x.id)===String(id));if(!r)return toast('Tip not found.');tipEditRowId=r.id;$('#tipEditMeta').textContent=r.client_name+' • '+r.session_date;$('#tipEditAmount').value=String(r.tip_amount);$('#tipEditMethod').value=['Cash','GCash'].includes(r.tip_payment_method)?r.tip_payment_method:'Cash';$('#tipEditDate').value=r.tip_received_at||today();$('#tipEditDialog').showModal()}
+async function saveEditedTip(){
+ if(tipEditBusy)return;const r=reportTipRows.find(x=>x.id===tipEditRowId);if(!r)return;
+ const amount=Number($('#tipEditAmount').value),method=$('#tipEditMethod').value,date=$('#tipEditDate').value;
+ if(!Number.isFinite(amount)||amount<=0||Math.abs(amount*100-Math.round(amount*100))>0.00001)return toast('Enter a valid tip.');
+ if(!['Cash','GCash'].includes(method)||!/^\d{4}-\d{2}-\d{2}$/.test(date))return toast('Choose date and Cash/GCash.');
+ tipEditBusy=true;$('#tipEditSave').disabled=true;$('#removeTipBtn').disabled=true;
+ try{const {data,error}=await db.from('booking_payments').update({tip_amount:amount,tip_payment_method:method,tip_received_at:date}).eq('id',r.id).select('id');if(error)throw error;if(!data?.length)throw Error('Tip was not saved.');$('#tipEditDialog').close();toast('Tip updated.');window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'tip',bookingId:r.booking_id}}))}
+ catch(e){toast(e.message||'Update failed.')}finally{tipEditBusy=false;$('#tipEditSave').disabled=false;$('#removeTipBtn').disabled=false}
+}
+async function removeRecordedTip(){
+ if(tipEditBusy)return;const r=reportTipRows.find(x=>x.id===tipEditRowId);if(!r||!confirm('Remove tip for '+r.client_name+'?'))return;
+ tipEditBusy=true;$('#tipEditSave').disabled=true;$('#removeTipBtn').disabled=true;
+ try{const req=Number(r.amount||0)>0?db.from('booking_payments').update({tip_amount:0,tip_payment_method:null,tip_received_at:null}).eq('id',r.id).select('id'):db.from('booking_payments').delete().eq('id',r.id).select('id');const {data,error}=await req;if(error)throw error;if(!data?.length)throw Error('Removal failed.');$('#tipEditDialog').close();toast('Tip removed.');window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'tip',bookingId:r.booking_id}}))}
+ catch(e){toast(e.message||'Removal failed.')}finally{tipEditBusy=false;$('#tipEditSave').disabled=false;$('#removeTipBtn').disabled=false}
 }
 function renderReportTable(rows){
   if(!rows.length){$('#reportTable').innerHTML='<div class="empty">No sessions match this report filter.</div>';return}
@@ -313,6 +344,13 @@ function exportCsv(){
   rows.forEach(r=>lines.push([r.session_date,r.client_name,`${hour(r.start_hour)}-${hour(r.end_hour)}`,r.participant_count,r.session_status,r.total,r.paid,r.balance,paymentState(r)].map(csvEscape).join(',')));
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});saveBlob(blob,`coach-kazu-income-${$('#reportFrom').value}-to-${$('#reportTo').value}.csv`);
 }
+function exportTipsCsv(){
+ if(!reportTipRows.length)return toast('No tips for this date range.');
+ const safe=x=>{let s=String(x??'');if(/^\s*[=+\-@]/.test(s))s="'"+s;return csvEscape(s)};
+ const lines=[['Received Date','Client','Session Date','Tip Amount','Tip Method','Note'].join(',')];
+ reportTipRows.forEach(r=>lines.push([r.tip_received_at,r.client_name,r.session_date,r.tip_amount,r.tip_payment_method,r.note||''].map(safe).join(',')));
+ saveBlob(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}),'coach-kazu-tips-'+$('#reportFrom').value+'-to-'+$('#reportTo').value+'.csv');
+}
 function setReportPeriod(period,load=true){
   const from=$('#reportFrom'),to=$('#reportTo'),custom=$('#reportCustomDates'),label=$('#reportPeriodLabel');
   if(!from||!to)return;
@@ -333,6 +371,11 @@ function wireReport(){
   $('#generateIncomeReport').addEventListener('click',()=>{const a=$('#reportFrom').value,b=$('#reportTo').value;if(a&&b)$('#reportPeriodLabel').textContent='Custom Range • '+prettyDate(a)+' – '+prettyDate(b);loadReport()});
   $('#reportStatus').addEventListener('change',()=>{if(reportRows.length){const shown=reportRows.filter(r=>reportFilterMatch(r,$('#reportStatus').value));renderReportTable(shown);$('#reportRangeLabel').textContent=$('#reportFrom').value+' to '+$('#reportTo').value+' • '+shown.length+' of '+reportRows.length+' sessions';}});
   $('#exportIncomeCsv').addEventListener('click',exportCsv);
+  $('#exportTipsCsv').addEventListener('click',exportTipsCsv);
+  $('#tipHistoryToggle').addEventListener('click',()=>{tipHistoryExpanded=!tipHistoryExpanded;renderTipHistory()});
+  $('#tipHistoryList').addEventListener('click',e=>{const btn=e.target.closest('[data-tip-edit]');if(btn)openTipEdit(btn.dataset.tipEdit)});
+  $('#tipEditSave').addEventListener('click',saveEditedTip);$('#removeTipBtn').addEventListener('click',removeRecordedTip);
+  $('#tipEditClose').addEventListener('click',()=>$('#tipEditDialog').close());$('#tipEditCancel').addEventListener('click',()=>$('#tipEditDialog').close());
   setReportPeriod('month',false);
   loadReport();
 }
@@ -340,10 +383,10 @@ function init(){
   wireAdminMenu();wireNotifications();wireConfirmation();wireReport();
   $('#shareBookingLinkBtn')?.addEventListener('click',shareFreshBookingLink);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadNotifications()});
-  window.addEventListener('coach:admin-ready',()=>{loadNotifications();if(reportRows.length)loadReport()});
+  window.addEventListener('coach:admin-ready',()=>{loadNotifications();loadReport()});
   window.addEventListener('coach:data-changed',e=>{
     loadNotifications();
-    if(reportRows.length)loadReport();
+    if(reportRows.length||reportTipRows.length||['payment','tip'].includes(e.detail?.type))loadReport();
     const type=e.detail?.type,id=e.detail?.bookingId;
     if(id&&(type==='booking-confirmed'||type==='manual-booking-created'))setTimeout(()=>openConfirmationCard(id),260);
   });
