@@ -20,15 +20,47 @@ function drawContained(ctx,img,x,y,w,h){const scale=Math.min(w/img.naturalWidth,
 function setWeek(d){const m=mondayOf(d),s=addDays(m,6);state.monday=m;state.sunday=s;$('#weeklyStart').value=ymd(m);$('#weeklyRange').textContent=`Monday–Sunday • ${rangeLabel(m,s)}`}
 function slotKey(date,h){return `${date}|${h}`}
 function isPast(date,h){const x=new Date(`${date}T${pad(h)}:00:00`);return x.getTime()<=Date.now()}
-function privacyStatus(map,date,h){const raw=map.get(slotKey(date,h));if(raw==='booked')return 'booked';if(raw==='unavailable')return 'unavailable';if(isPast(date,h))return 'past';return 'available'}
-async function fetchWeek(){const start=ymd(state.monday),end=ymd(state.sunday);const {data,error}=await db.from('schedule_slots').select('slot_date,start_hour,status').gte('slot_date',start).lte('slot_date',end).order('slot_date').order('start_hour');if(error)throw error;return data||[]}
+function privacyStatus(map,date,h){const raw=map.get(slotKey(date,h))?.status;if(raw==='booked')return 'booked';if(raw==='unavailable')return 'unavailable';if(isPast(date,h))return 'past';return 'available'}
+async function fetchWeek(){const start=ymd(state.monday),end=ymd(state.sunday);const {data,error}=await db.from('schedule_slots').select('slot_date,start_hour,status,notes').gte('slot_date',start).lte('slot_date',end).order('slot_date').order('start_hour');if(error)throw error;return data||[]}
+
+function publicBlockReason(slot){
+  if(!slot)return '';
+  const published=String(slot.public_reason||'').trim();
+  if(published){
+    if(published.startsWith('PRIVATE:'))return '';
+    return published.startsWith('PUBLIC:')?published.slice(7).trim():published;
+  }
+  const note=String(slot.notes||'').trim();
+  return note.startsWith('PUBLIC:')?note.slice(7).trim():'';
+}
+function ellipsizeCell(ctx,text,maxWidth,force=false){
+  let value=String(text||'');
+  if(!force&&ctx.measureText(value).width<=maxWidth)return value;
+  while(value.length&&ctx.measureText(value+'…').width>maxWidth)value=value.slice(0,-1);
+  return value+'…';
+}
+function drawSlotLabel(ctx,text,x,y,maxWidth){
+  const words=String(text||'COACH OFF').trim().replace(/\s+/g,' ').toUpperCase().split(' ');
+  ctx.font='900 14px Arial';
+  const lines=[];let line='';
+  for(const word of words){
+    const next=line?line+' '+word:word;
+    if(ctx.measureText(next).width<=maxWidth)line=next;
+    else if(line){lines.push(line);line=word;}
+    else lines.push(ellipsizeCell(ctx,word,maxWidth));
+  }
+  if(line)lines.push(line);
+  const twoLines=lines.length>1;
+  if(lines.length>2)lines.splice(1,lines.length-1,ellipsizeCell(ctx,lines.slice(1).join(' '),maxWidth,true));
+  lines.slice(0,2).forEach((part,i)=>ctx.fillText(ellipsizeCell(ctx,part,maxWidth),x,y+(twoLines?(i?43:27):36)));
+}
 async function drawCard(rows){const canvas=$('#weeklyScheduleCanvas'),ctx=canvas.getContext('2d');canvas.width=1800;canvas.height=1350;ctx.clearRect(0,0,1800,1350);ctx.fillStyle='#070707';ctx.fillRect(0,0,1800,1350);const glow=ctx.createLinearGradient(0,0,1200,700);glow.addColorStop(0,'rgba(255,214,0,.17)');glow.addColorStop(.55,'rgba(255,214,0,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,1800,700);ctx.fillStyle='#FFD600';ctx.fillRect(0,0,1800,18);
 const [brandIcon,wordmark]=await Promise.all([loadBrandImage('assets/coach-kazu-favicon.webp?v=3'),loadBrandImage('assets/coach-kazu-wordmark.webp?v=3')]);drawContained(ctx,brandIcon,72,42,92,92);drawContained(ctx,wordmark,186,48,405,82);ctx.fillStyle='#fff';ctx.font='900 58px Arial';ctx.fillText('WEEKLY COACHING AVAILABILITY',72,190);ctx.fillStyle='#b5b5b5';ctx.font='700 24px Arial';ctx.fillText(`MONDAY – SUNDAY  •  ${rangeLabel(state.monday,state.sunday).toUpperCase()}`,72,232);ctx.fillStyle='#777';ctx.font='700 18px Arial';ctx.fillText('Santiago City • Coaching hours 10:00 AM – 11:00 PM',72,268);
-const map=new Map(rows.map(r=>[slotKey(r.slot_date,Number(r.start_hour)),r.status]));const left=70,top=315,totalW=1660,timeW=245,dayW=(totalW-timeW)/7,headerH=78,rowH=61;
+const map=new Map(rows.map(r=>[slotKey(r.slot_date,Number(r.start_hour)),r]));const left=70,top=315,totalW=1660,timeW=245,dayW=(totalW-timeW)/7,headerH=78,rowH=61;
 rounded(ctx,left,top,totalW,headerH+rowH*(END_HOUR-START_HOUR),22);ctx.fillStyle='#0d0d0d';ctx.fill();ctx.strokeStyle='#292929';ctx.lineWidth=2;ctx.stroke();
 ctx.fillStyle='#171717';ctx.fillRect(left,top,timeW,headerH);ctx.fillStyle='#909090';ctx.font='900 17px Arial';ctx.textAlign='center';ctx.fillText('TIME',left+timeW/2,top+47);
 for(let d=0;d<7;d++){const date=addDays(state.monday,d),x=left+timeW+d*dayW;ctx.fillStyle=d%2?'#111':'#141414';ctx.fillRect(x,top,dayW,headerH);ctx.fillStyle='#FFD600';ctx.font='900 21px Arial';ctx.fillText(DAYS[d],x+dayW/2,top+31);ctx.fillStyle='#aaa';ctx.font='700 16px Arial';ctx.fillText(date.toLocaleDateString('en-PH',{month:'short',day:'numeric'}).toUpperCase(),x+dayW/2,top+57)}
-let counts={available:0,booked:0,unavailable:0,past:0};for(let r=0,h=START_HOUR;h<END_HOUR;h++,r++){const y=top+headerH+r*rowH;ctx.fillStyle=r%2?'#0b0b0b':'#0e0e0e';ctx.fillRect(left,y,timeW,rowH);ctx.fillStyle='#bcbcbc';ctx.font='800 15px Arial';ctx.fillText(hourRange(h),left+timeW/2,y+37);for(let d=0;d<7;d++){const date=ymd(addDays(state.monday,d)),st=privacyStatus(map,date,h),x=left+timeW+d*dayW;counts[st]++;ctx.fillStyle=st==='available'?'#12361f':st==='booked'?'#3b1717':st==='unavailable'?'#3b2c0d':'#171717';ctx.fillRect(x+4,y+4,dayW-8,rowH-8);ctx.fillStyle=st==='available'?'#9ff0b5':st==='booked'?'#ff9b9b':st==='unavailable'?'#ffd56e':'#666';ctx.font='900 14px Arial';ctx.fillText(st==='available'?'AVAILABLE':st==='booked'?'BOOKED':st==='unavailable'?'COACH OFF':'PAST',x+dayW/2,y+36)}}
+let counts={available:0,booked:0,unavailable:0,past:0};for(let r=0,h=START_HOUR;h<END_HOUR;h++,r++){const y=top+headerH+r*rowH;ctx.fillStyle=r%2?'#0b0b0b':'#0e0e0e';ctx.fillRect(left,y,timeW,rowH);ctx.fillStyle='#bcbcbc';ctx.font='800 15px Arial';ctx.fillText(hourRange(h),left+timeW/2,y+37);for(let d=0;d<7;d++){const date=ymd(addDays(state.monday,d)),st=privacyStatus(map,date,h),x=left+timeW+d*dayW;counts[st]++;ctx.fillStyle=st==='available'?'#12361f':st==='booked'?'#3b1717':st==='unavailable'?'#3b2c0d':'#171717';ctx.fillRect(x+4,y+4,dayW-8,rowH-8);ctx.fillStyle=st==='available'?'#9ff0b5':st==='booked'?'#ff9b9b':st==='unavailable'?'#ffd56e':'#666';ctx.font='900 14px Arial';drawSlotLabel(ctx,st==='available'?'AVAILABLE':st==='booked'?'BOOKED':st==='unavailable'?(publicBlockReason(map.get(slotKey(date,h)))||'COACH OFF'):'PAST',x+dayW/2,y,dayW-20)}}
 ctx.strokeStyle='#222';ctx.lineWidth=1;for(let i=0;i<=7;i++){const x=left+timeW+i*dayW;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,top+headerH+rowH*(END_HOUR-START_HOUR));ctx.stroke()}for(let i=0;i<=(END_HOUR-START_HOUR);i++){const y=top+headerH+i*rowH;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(left+totalW,y);ctx.stroke()}
 ctx.textAlign='left';const footY=1262;ctx.fillStyle='#86df9d';ctx.beginPath();ctx.arc(76,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddd';ctx.font='800 17px Arial';ctx.fillText('Available',94,footY-2);ctx.fillStyle='#e28d8d';ctx.beginPath();ctx.arc(245,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddd';ctx.fillText('Booked',263,footY-2);ctx.fillStyle='#d6a84f';ctx.beginPath();ctx.arc(390,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddd';ctx.fillText('Coach Unavailable',408,footY-2);ctx.fillStyle='#555';ctx.beginPath();ctx.arc(625,footY-8,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#999';ctx.fillText('Past',643,footY-2);ctx.fillStyle='#777';ctx.font='700 15px Arial';ctx.fillText('Privacy-safe: client names and booking details are never shown.',780,footY-2);ctx.fillStyle='#FFD600';ctx.font='900 19px Arial';ctx.fillText('BOOK: coachkazu.xbalanced.net',72,1312);ctx.fillStyle='#777';ctx.font='700 15px Arial';ctx.fillText('Availability may change. Final schedule is confirmed by Coach Kazu.',1260,1292);ctx.textAlign='center';ctx.fillStyle='#5f5f5f';ctx.font='700 13px Arial';ctx.fillText('© 2026 XBALANCED DIGITAL SOLUTIONS',900,1326);ctx.textAlign='left';
 state.counts=counts;return canvas}
