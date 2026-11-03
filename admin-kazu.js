@@ -1,14 +1,18 @@
 (() => {
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
 const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-let activeInquiry=null,activePaymentBooking=null,activeClient=null,paymentTotals=new Map(),clientCache=[],listPreviewState={upcoming:false,past:false,payment:false,completed:false,clients:false};
+let activeInquiry=null,activePaymentBooking=null,activeClient=null,paymentTotals=new Map(),courtPaymentTotals=new Map(),clientCache=[],listPreviewState={upcoming:false,past:false,payment:false,completed:false,clients:false};
 let confirmBookingInFlight=false;
 const LIST_PREVIEW_LIMIT=3;
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,hour=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`,shortHour=h=>`${h%12||12}${h<12?'am':'pm'}`;
 const skillDefs=[['serve','Serve'],['return_score','Return'],['forehand','Forehand'],['backhand','Backhand'],['dinking','Dinking'],['footwork','Footwork'],['positioning','Positioning'],['consistency','Consistency'],['strategy','Strategy'],['confidence','Confidence']];
 function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');setTimeout(()=>x.classList.remove('show'),2800)}
 function esc(s){return String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
-function money(n){return `₱${Number(n||0).toLocaleString('en-PH')}`}
+function money(n){return `₱${Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+function courtCharge(b){return b?.court_paid_by_coach&&b?.court_charge_client?Number(b.court_paid_amount||0):0}
+function clientDue(b){return Number(b.total_amount||0)+courtCharge(b)}
+function remainingCourt(b){return Math.max(0,courtCharge(b)-(courtPaymentTotals.get(b.id)||0))}
+function remainingClient(b){return Math.max(0,Number(b.total_amount||0)-(paymentTotals.get(b.id)||0))+remainingCourt(b)}
 function applyListPreview(containerSelector,itemSelector,toggleSelector,key){
   const items=$$(`${containerSelector} ${itemSelector}`),toggle=$(toggleSelector),expanded=Boolean(listPreviewState[key]);
   items.forEach((item,index)=>item.classList.toggle('list-preview-hidden',!expanded&&index>=LIST_PREVIEW_LIMIT));
@@ -363,14 +367,14 @@ async function loadBookings(){
     return;
   }
   const ids=(data||[]).map(b=>b.id);
-  paymentTotals=new Map();
+  paymentTotals=new Map();courtPaymentTotals=new Map();
   if(ids.length){
-    const {data:p,error:pe}=await db.from('booking_payments').select('booking_id,amount').in('booking_id',ids);
+    const {data:p,error:pe}=await db.from('booking_payments').select('booking_id,amount,court_amount').in('booking_id',ids);
     if(pe)return toast(pe.message);
-    (p||[]).forEach(x=>paymentTotals.set(x.booking_id,(paymentTotals.get(x.booking_id)||0)+Number(x.amount||0)));
+    (p||[]).forEach(x=>{paymentTotals.set(x.booking_id,(paymentTotals.get(x.booking_id)||0)+Number(x.amount||0));courtPaymentTotals.set(x.booking_id,(courtPaymentTotals.get(x.booking_id)||0)+Number(x.court_amount||0));});
   }
   const rows=(data||[]).map(b=>{
-    const paid=paymentTotals.get(b.id)||0,total=Number(b.total_amount||0);
+    const paid=(paymentTotals.get(b.id)||0)+(courtPaymentTotals.get(b.id)||0),total=clientDue(b);
     return {...b,paid,balance:Math.max(0,total-paid)};
   });
   const todays=rows.filter(b=>b.session_date===today&&(b.session_status!=='completed'||b.balance>0.001));
@@ -386,7 +390,7 @@ async function loadBookings(){
 }
 function isSessionEarly(b){const now=new Date(),d=ymd(now);if(String(b.session_date)>d)return true;if(String(b.session_date)<d)return false;const end=Number(b.end_hour||0),nowHour=now.getHours()+(now.getMinutes()/60);return end>nowHour}
 function bookingCard(b,todayMode=false,pastMode=false){
-  const paid=Number(b.paid??paymentTotals.get(b.id)??0),total=Number(b.total_amount||0),bal=Math.max(0,total-paid),payState=bal<=0?'Paid':paid>0?'Partial':'Unpaid',done=b.session_status==='completed',early=!done&&isSessionEarly(b),completedEarly=wasCompletedEarly(b),completeLabel=early?'Complete Early':'Mark Completed';
+  const paid=Number(b.paid??((paymentTotals.get(b.id)||0)+(courtPaymentTotals.get(b.id)||0))),total=clientDue(b),bal=Math.max(0,total-paid),payState=bal<=0?'Paid':paid>0?'Partial':'Unpaid',done=b.session_status==='completed',early=!done&&isSessionEarly(b),completedEarly=wasCompletedEarly(b),completeLabel=early?'Complete Early':'Mark Completed';
   const completionBtn=!done?`<button class="mini confirm" data-complete="${b.id}">${completeLabel}</button>`:'';
   const paymentBtn=bal>0?`<button class="mini" data-payment="${b.id}">Record Payment</button>`:`<button class="mini tip-action" data-add-tip="${b.id}">+ Add Tip</button>`;
   const stateLabel=pastMode&&!done?'Past • Needs Completion':completedEarly?'Completed Early':(b.session_status||'scheduled');
@@ -424,12 +428,29 @@ async function setSessionStatus(b,status){
   window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'session-status',bookingId:b.id,status}}));
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:keepScroll,left:0,behavior:'auto'})));
 }
-function updateTipPreview(){const enabled=$('#paymentTipEnabled').checked;$('#paymentTipFields').hidden=!enabled;const fee=Number($('#paymentAmount').value||0),tip=enabled?Number($('#paymentTipAmount').value||0):0;const fmt=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});$('#paymentPreviewCoaching').textContent=fmt(fee);$('#paymentPreviewTip').textContent=fmt(tip);$('#paymentPreviewTotal').textContent=fmt(fee+tip)}
+function updateTipPreview(){const enabled=$('#paymentTipEnabled').checked;$('#paymentTipFields').hidden=!enabled;const fee=Number($('#paymentAmount').value||0),court=Number($('#paymentCourtAmount')?.value||0),tip=enabled?Number($('#paymentTipAmount').value||0):0;$('#paymentPreviewCoaching').textContent=money(fee);if($('#paymentPreviewCourt'))$('#paymentPreviewCourt').textContent=money(court);$('#paymentPreviewTip').textContent=money(tip);$('#paymentPreviewTotal').textContent=money(fee+court+tip)}
+$('#paymentCourtAmount')?.addEventListener('input',updateTipPreview);
 $('#paymentTipEnabled').addEventListener('change',updateTipPreview);
 $('#paymentTipAmount').addEventListener('input',updateTipPreview);
 $('#paymentAmount').addEventListener('input',updateTipPreview);
 $('#paymentMethod').addEventListener('change',()=>{const m=$('#paymentMethod').value;if(['Cash','GCash'].includes(m))$('#paymentTipMethod').value=m});
-function openPayment(b,tipOnly=false){activePaymentBooking=b;const paid=paymentTotals.get(b.id)||0,total=Number(b.total_amount||0),bal=Math.max(0,total-paid);$('#paymentTitle').textContent=(tipOnly?'Add Tip • ':'Record Payment • ')+b.client_name;$('#paymentMeta').innerHTML=`${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}`;$('#paymentTotal').textContent=money(total);$('#paymentPaid').textContent=money(paid);$('#paymentBalance').textContent=money(bal);$('#paymentAmount').value=tipOnly?'0':(bal||'');$('#paymentAmount').max=bal;$('#paymentAmount').min='0';$('#paymentDate').value=ymd(new Date());$('#paymentNote').value='';$('#paymentTipEnabled').checked=!!tipOnly;$('#paymentTipAmount').value='';$('#paymentTipMethod').value=['Cash','GCash'].includes($('#paymentMethod').value)?$('#paymentMethod').value:'Cash';updateTipPreview();$('#paymentDialog').showModal()}
+function openPayment(b,tipOnly=false){
+ activePaymentBooking=b;
+ const paid=paymentTotals.get(b.id)||0,courtPaid=courtPaymentTotals.get(b.id)||0;
+ const coachBalance=Math.max(0,Number(b.total_amount||0)-paid),courtBalance=Math.max(0,courtCharge(b)-courtPaid);
+ const bal=coachBalance+courtBalance;
+ $('#paymentTitle').textContent=(tipOnly?'Add Tip • ':'Record Payment • ')+b.client_name;
+ $('#paymentMeta').innerHTML=`${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}`;
+ $('#paymentTotal').textContent=money(clientDue(b));$('#paymentPaid').textContent=money(paid+courtPaid);$('#paymentBalance').textContent=money(bal);
+ $('#paymentAmount').value=tipOnly?'0':(coachBalance||'');$('#paymentAmount').max=coachBalance;$('#paymentAmount').min='0';
+ const courtWrap=$('#paymentCourtWrap');if(courtWrap)courtWrap.hidden=!courtCharge(b);
+ if($('#paymentCourtAmount')){$('#paymentCourtAmount').value=tipOnly?'0':(courtBalance||'');$('#paymentCourtAmount').max=courtBalance;}
+ if($('#paymentCourtStatus'))$('#paymentCourtStatus').textContent=money(courtPaid)+' court paid • '+money(courtBalance)+' court balance. Excluded from coaching income.';
+ $('#paymentDate').value=ymd(new Date());$('#paymentNote').value='';
+ $('#paymentTipEnabled').checked=!!tipOnly;$('#paymentTipAmount').value='';
+ $('#paymentTipMethod').value=['Cash','GCash'].includes($('#paymentMethod').value)?$('#paymentMethod').value:'Cash';
+ updateTipPreview();$('#paymentDialog').showModal();
+}
 async function loadPaymentFollowups(){
   const list=$('#paymentFollowupList'),count=$('#paymentFollowupCount');
   if(!list)return;
@@ -438,16 +459,16 @@ async function loadPaymentFollowups(){
   if(error){list.innerHTML=`<div class="empty">${esc(error.message)}</div>`;if(count)count.textContent='0';return}
   const ids=(bookings||[]).map(b=>b.id),paidMap=new Map();
   if(ids.length){
-    const {data:p,error:pe}=await db.from('booking_payments').select('booking_id,amount').in('booking_id',ids);
+    const {data:p,error:pe}=await db.from('booking_payments').select('booking_id,amount,court_amount').in('booking_id',ids);
     if(pe){list.innerHTML=`<div class="empty">${esc(pe.message)}</div>`;if(count)count.textContent='0';return}
-    (p||[]).forEach(x=>paidMap.set(x.booking_id,(paidMap.get(x.booking_id)||0)+Number(x.amount||0)));
+    (p||[]).forEach(x=>paidMap.set(x.booking_id,(paidMap.get(x.booking_id)||0)+Number(x.amount||0)+Number(x.court_amount||0)));
   }
   const rows=(bookings||[]).map(b=>({...b,paid:paidMap.get(b.id)||0}))
-    .filter(b=>Number(b.total_amount||0)-b.paid>0.001)
+    .filter(b=>clientDue(b)-b.paid>0.001)
     .filter(b=>String(b.session_date)!==today);
   if(count)count.textContent=String(rows.length);
   list.innerHTML=rows.length?rows.map(b=>{
-    const total=Number(b.total_amount||0),bal=Math.max(0,total-b.paid),state=b.paid>0?'Partial':'Unpaid',early=wasCompletedEarly(b);
+    const total=clientDue(b),bal=Math.max(0,total-b.paid),state=b.paid>0?'Partial':'Unpaid',early=wasCompletedEarly(b);
     return `<article class="card payment-followup-card" id="payment-followup-${b.id}"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(total)} total<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}<br>${money(b.paid)} paid • <strong>${money(bal)} due</strong></div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment ${state.toLowerCase()}">${state}</span></div></div><div class="card-actions"><button class="mini confirm" data-followup-payment="${b.id}">Record Remaining Payment</button><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
   }).join(''):'<div class="empty">No completed sessions need payment follow-up.</div>';
   rows.forEach(b=>document.querySelector(`[data-followup-payment="${b.id}"]`)?.addEventListener('click',()=>{paymentTotals.set(b.id,b.paid);openPayment(b)}));
@@ -461,12 +482,12 @@ async function loadCompletedSessions(){
   if(error){list.innerHTML=`<div class="empty">${esc(error.message)}</div>`;if(count)count.textContent='0';return}
   const ids=(bookings||[]).map(b=>b.id),paidMap=new Map();
   if(ids.length){
-    const {data:p,error:pe}=await db.from('booking_payments').select('booking_id,amount').in('booking_id',ids);
+    const {data:p,error:pe}=await db.from('booking_payments').select('booking_id,amount,court_amount').in('booking_id',ids);
     if(pe){list.innerHTML=`<div class="empty">${esc(pe.message)}</div>`;if(count)count.textContent='0';return}
-    (p||[]).forEach(x=>paidMap.set(x.booking_id,(paidMap.get(x.booking_id)||0)+Number(x.amount||0)));
+    (p||[]).forEach(x=>paidMap.set(x.booking_id,(paidMap.get(x.booking_id)||0)+Number(x.amount||0)+Number(x.court_amount||0)));
   }
   const rows=(bookings||[]).map(b=>{
-    const paid=paidMap.get(b.id)||0,total=Number(b.total_amount||0);
+    const paid=paidMap.get(b.id)||0,total=clientDue(b);
     return {...b,paid,balance:Math.max(0,total-paid)};
   }).filter(b=>b.balance<=0.001)
     .sort((a,b)=>{
@@ -476,7 +497,7 @@ async function loadCompletedSessions(){
   if(count)count.textContent=String(rows.length);
   list.innerHTML=rows.length?rows.map(b=>{
     const early=wasCompletedEarly(b);
-    return `<article class="card completed-session-card"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(b.total_amount)} collected<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}</div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment paid">Paid</span></div></div><div class="card-actions"><button class="mini tip-action" data-completed-tip="${b.id}">+ Add Tip</button><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
+    return `<article class="card completed-session-card"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(clientDue(b))} collected<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}</div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment paid">Paid</span></div></div><div class="card-actions"><button class="mini tip-action" data-completed-tip="${b.id}">+ Add Tip</button><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
   }).join(''):'<div class="empty">No fully settled completed sessions yet.</div>';
   rows.forEach(b=>document.querySelectorAll(`[data-completed-tip="${b.id}"]`).forEach(btn=>btn.onclick=()=>{paymentTotals.set(b.id,b.paid);openPayment(b,true)}));
   applyListPreview('#completedSessionsList','.completed-session-card','#toggleCompletedSessions','completed');
@@ -484,17 +505,25 @@ async function loadCompletedSessions(){
 $('#savePaymentBtn').onclick=savePayment;
 async function savePayment(){
  const b=activePaymentBooking;if(!b)return;
- const amount=Number($('#paymentAmount').value||0),enabled=$('#paymentTipEnabled').checked,tip=enabled?Number($('#paymentTipAmount').value||0):0;
+ const amount=Number($('#paymentAmount').value||0),court=Number($('#paymentCourtAmount')?.value||0);
+ const enabled=$('#paymentTipEnabled').checked,tip=enabled?Number($('#paymentTipAmount').value||0):0;
  const valid=n=>Number.isFinite(n)&&n>=0&&Math.abs(n*100-Math.round(n*100))<0.00001;
- const bal=Math.max(0,Number(b.total_amount||0)-(paymentTotals.get(b.id)||0));
- if(!valid(amount)||!valid(tip)||enabled&&tip<=0||amount+tip<=0)return toast('Enter a valid received coaching payment or tip.');
- if(amount>bal+0.001)return toast('Coaching payment exceeds the balance. Tips are separate.');
+ const coachingBalance=Math.max(0,Number(b.total_amount||0)-(paymentTotals.get(b.id)||0));
+ const courtBalance=remainingCourt(b);
+ if(!valid(amount)||!valid(court)||!valid(tip)||enabled&&tip<=0||amount+court+tip<=0)return toast('Enter a valid payment amount.');
+ if(amount>coachingBalance+0.001)return toast('Coaching payment exceeds coaching balance.');
+ if(court>courtBalance+0.001)return toast('Court payment exceeds court balance.');
  const date=$('#paymentDate').value||ymd(new Date()),method=$('#paymentTipMethod').value;
  if(tip>0&&!['Cash','GCash'].includes(method))return toast('Choose Cash or GCash for tip.');
  const btn=$('#savePaymentBtn');if(btn.disabled)return;btn.disabled=true;
  try{
-  const {error}=await db.from('booking_payments').insert({booking_id:b.id,amount,tip_amount:tip,tip_payment_method:tip>0?method:null,tip_received_at:tip>0?date:null,paid_at:date,payment_method:amount>0?$('#paymentMethod').value:method,note:$('#paymentNote').value.trim()||null,source:amount>0?'manual':'tip'});
-  if(error)throw error;$('#paymentDialog').close();toast(tip>0?'Received tip saved.':'Payment saved.');
+  const {error}=await db.from('booking_payments').insert({
+    booking_id:b.id,amount,court_amount:court,tip_amount:tip,
+    tip_payment_method:tip>0?method:null,tip_received_at:tip>0?date:null,
+    paid_at:date,payment_method:amount+court>0?$('#paymentMethod').value:method,
+    note:$('#paymentNote').value.trim()||null,source:amount+court>0?'manual':'tip'
+  });
+  if(error)throw error;$('#paymentDialog').close();toast('Payment saved.');
   await Promise.all([loadBookings(),loadPaymentFollowups(),loadCompletedSessions(),loadClients()]);
   window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'payment',bookingId:b.id}}));
  }catch(e){toast(e.message||'Could not save.')}finally{btn.disabled=false}
