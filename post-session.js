@@ -42,7 +42,7 @@ $('#completeSessionBtn')?.addEventListener('click',async()=>{if(!active)return;r
       p_outcome_note:$('#postOutcome').value.trim()||null,
       p_payment_amount:amount,
       p_court_payment_amount:courtAmount,
-      p_payment_method:amount>0?$('#postPaymentMethod').value:null,
+      p_payment_method:amount+courtAmount>0?$('#postPaymentMethod').value:null,
       p_payment_date:$('#postPaymentDate').value||ymd(new Date()),
       p_progress_entries:[...drafts.values()]
     });
