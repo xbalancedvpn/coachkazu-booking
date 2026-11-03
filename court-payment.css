@@ -1,0 +1,22 @@
+/* Optional court amount on Coach Kazu admin booking cards only */
+.kazu-court-strip{margin:9px 0 2px;padding:11px 13px;border:1px solid rgba(247,190,31,.35);border-radius:12px;background:rgba(247,190,31,.065);display:grid;gap:4px}
+.kazu-court-strip strong{font-size:12px;letter-spacing:.025em;color:#efbd33}
+.kazu-court-strip small{font-size:12px;line-height:1.5;color:#d4d4d4}
+.kazu-court-strip small:last-child{color:#999;font-size:11px}
+.kazu-court-action{border-color:rgba(247,190,31,.52)!important}
+.kazu-court-dialog{border:0;background:transparent;padding:12px;width:min(100%,480px);max-height:94dvh;overflow:auto;color:#f4f4f4}
+.kazu-court-dialog::backdrop{background:rgba(0,0,0,.82);backdrop-filter:blur(5px)}
+.kazu-court-dialog .dialog-card{width:100%;margin:0;background:#111;border:1px solid #3a3321;border-radius:17px;box-sizing:border-box}
+.kazu-court-dialog .dialog-card label{display:grid;gap:7px}
+.kazu-court-dialog .dialog-card input[type=number]{width:100%;box-sizing:border-box}
+.kazu-court-toggle{display:flex!important;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#1a1a1a;border:1px solid #373737;border-radius:11px;margin:9px 0}
+.kazu-court-toggle span{display:grid;gap:3px;line-height:1.25}
+.kazu-court-toggle small{display:block;font-size:11px;font-weight:400;color:#a6a6a6}
+.kazu-court-toggle input{flex:0 0 auto;width:19px;height:19px;accent-color:#efbd33}
+#kazuCourtFields[hidden],.kazu-court-live-bill[hidden]{display:none!important}
+#kazuCourtFields{display:grid;gap:7px}
+.kazu-court-bill{border:1px solid rgba(238,188,51,.38);border-radius:12px;background:rgba(238,188,51,.085);padding:12px 13px;display:grid;gap:6px;margin:11px 0}
+.kazu-court-bill>span,.kazu-court-bill>small{font-size:12px;color:#e2e0db;line-height:1.45}
+.kazu-court-bill>strong{color:#f7c546;font-size:15px;line-height:1.35}
+.kazu-court-help{font-size:12px;color:#a9a9a9;line-height:1.55}
+@media(max-width:540px){.kazu-court-strip{padding:9px 10px}.kazu-court-dialog{width:100%;padding:9px}.kazu-court-bill>strong{font-size:14px}}
