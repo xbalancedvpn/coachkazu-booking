@@ -158,17 +158,30 @@ function rounded(ctx,x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x
 function canvasToBlob(canvas){return new Promise((resolve,reject)=>{if(canvas.toBlob){canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Could not prepare the PNG image.')),'image/png',1);return}try{const data=canvas.toDataURL('image/png'),bin=atob(data.split(',')[1]),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);resolve(new Blob([arr],{type:'image/png'}))}catch(e){reject(e)}})}
 async function openConfirmationCard(id){
   try{
+    // The client confirmation must use the same court-inclusive amount as the admin booking card.
+    // Tips and private coaching profit are intentionally excluded from this client-facing PNG.
     const [{data:b,error:be},{data:p,error:pe}]=await Promise.all([
       db.from('bookings').select('*').eq('id',id).maybeSingle(),
-      db.from('booking_payments').select('amount').eq('booking_id',id)
+      db.from('booking_payments').select('amount,court_amount').eq('booking_id',id)
     ]);
     if(be)throw be;if(pe)throw pe;
     if(!b)throw new Error('This booking is no longer in the database. Refresh the admin dashboard and try again.');
     confirmationBooking=b;
-    const paid=(p||[]).reduce((s,x)=>s+Number(x.amount||0),0),total=Number(b.total_amount||0),balance=Math.max(0,total-paid);
+    const pngMoney=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const coachingFee=Number(b.total_amount||0);
+    const courtIncluded=b.court_paid_by_coach===true&&b.court_charge_client===true;
+    const courtFee=courtIncluded?Number(b.court_paid_amount||0):0;
+    const totalDue=coachingFee+courtFee;
+    const paid=(p||[]).reduce((sum,x)=>sum+Number(x.amount||0)+Number(x.court_amount||0),0);
+    const balance=Math.max(0,totalDue-paid);
+    const courtDisplay=courtIncluded?pngMoney(courtFee):(b.court_paid_by_coach?'No charge (covered by Coach)':'Not included');
     const canvas=$('#bookingConfirmationCanvas'),ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('This browser could not prepare the PNG preview.');
+    ctx.textAlign='left';
     ctx.clearRect(0,0,1080,1350);ctx.fillStyle='#070707';ctx.fillRect(0,0,1080,1350);
-    const g=ctx.createLinearGradient(0,0,1080,1350);g.addColorStop(0,'rgba(255,214,0,.2)');g.addColorStop(.42,'rgba(255,214,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,1080,1350);
+    const gradient=ctx.createLinearGradient(0,0,1080,1350);
+    gradient.addColorStop(0,'rgba(255,214,0,.2)');gradient.addColorStop(.42,'rgba(255,214,0,0)');
+    ctx.fillStyle=gradient;ctx.fillRect(0,0,1080,1350);
     ctx.fillStyle='#FFD600';ctx.fillRect(0,0,1080,18);
     try{
       const wordmark=new Image(),brandIcon=new Image();
@@ -181,24 +194,56 @@ async function openConfirmationCard(id){
       ctx.drawImage(brandIcon,912,46,brandIcon.naturalWidth*is,brandIcon.naturalHeight*is);
     }catch{}
     ctx.fillStyle='#FFD600';ctx.font='900 22px Arial';ctx.fillText('BOOKING CONFIRMATION',72,270);
-    ctx.fillStyle='#fff';const fs=fitText(ctx,String(b.client_name||'CLIENT').toUpperCase(),930,62,34);ctx.font=`900 ${fs}px Arial`;ctx.fillText(String(b.client_name||'CLIENT').toUpperCase(),72,350);
+    ctx.fillStyle='#fff';
+    const name=String(b.client_name||'CLIENT').toUpperCase();
+    const nameSize=fitText(ctx,name,930,62,34);
+    ctx.font='900 '+nameSize+'px Arial';ctx.fillText(name,72,350,930);
     ctx.fillStyle='#aaa';ctx.font='700 22px Arial';ctx.fillText('Your coaching session is confirmed.',72,395);
-    rounded(ctx,72,455,936,430,30);ctx.fillStyle='#111';ctx.fill();
+    // Session details: keep the court name distinct from its rental charge.
+    rounded(ctx,72,455,936,360,30);ctx.fillStyle='#111';ctx.fill();
     const rows=[
       ['DATE',new Date(b.session_date+'T12:00:00').toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric',year:'numeric'})],
       ['TIME',hour(b.start_hour)+' – '+hour(b.end_hour)],
       ['DURATION',(Number(b.end_hour)-Number(b.start_hour))+' hour'+(Number(b.end_hour)-Number(b.start_hour)>1?'s':'')],
       ['PLAYERS',String(b.participant_count||1)+' pax'],
-      ['COURT',String(b.court_name||'Not specified')],
-      ['COACHING FEE',money(total)],
-      ['PAYMENT',balance<=0?'Paid in full':paid>0?money(paid)+' paid • '+money(balance)+' balance':'Unpaid • '+money(balance)+' balance']
+      ['COURT',String(b.court_name||'Not specified')]
     ];
-    let y=515;for(const [k,v] of rows){ctx.fillStyle='#777';ctx.font='800 16px Arial';ctx.fillText(k,110,y);ctx.fillStyle=k==='PAYMENT'?'#FFD600':'#fff';ctx.font='900 25px Arial';ctx.fillText(v,330,y);y+=62}
-    ctx.fillStyle='#aaa';ctx.font='700 18px Arial';ctx.fillText('COURT FEE',110,945);ctx.fillStyle='#fff';ctx.font='900 24px Arial';ctx.fillText('Not included',330,945);
-    rounded(ctx,72,1000,936,150,24);ctx.fillStyle='#101010';ctx.fill();ctx.fillStyle='#FFD600';ctx.font='900 20px Arial';ctx.fillText('COACH KAZU',105,1050);ctx.fillStyle='#ddd';ctx.font='700 18px Arial';ctx.fillText('Pickleball Coaching • Santiago City',105,1085);ctx.fillStyle='#888';ctx.font='700 16px Arial';ctx.fillText('Please message Coach Kazu on Facebook for changes or questions.',105,1120);
-    ctx.fillStyle='#555';ctx.font='700 15px Arial';ctx.fillText('Generated from Coach Kazu Booking System',72,1278);ctx.textAlign='center';ctx.fillStyle='#666';ctx.font='700 13px Arial';ctx.fillText('© 2026 XBALANCED DIGITAL SOLUTIONS',540,1322);ctx.textAlign='left';
+    let y=521;
+    for(const [label,value] of rows){
+      ctx.fillStyle='#999';ctx.font='800 16px Arial';ctx.fillText(label,110,y);
+      ctx.fillStyle='#fff';ctx.font='900 25px Arial';ctx.fillText(String(value),330,y,635);
+      y+=62;
+    }
+    // Clear, client-facing amount due. Never treat the whole court fee as coach income.
+    rounded(ctx,72,836,936,344,26);ctx.fillStyle='#141414';ctx.fill();
+    ctx.strokeStyle='rgba(255,214,0,.35)';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#FFD600';ctx.font='900 20px Arial';ctx.fillText('PAYMENT SUMMARY',110,880);
+    function amountRow(label,value,yPosition,emphasized=false){
+      ctx.textAlign='left';
+      ctx.fillStyle=emphasized?'#FFD600':'#b7b7b7';
+      ctx.font=emphasized?'900 22px Arial':'800 18px Arial';
+      ctx.fillText(label,110,yPosition,430);
+      ctx.textAlign='right';
+      ctx.fillStyle=emphasized?'#FFD600':'#fff';
+      ctx.font=emphasized?'900 38px Arial':'900 25px Arial';
+      ctx.fillText(String(value),970,yPosition,485);
+      ctx.textAlign='left';
+    }
+    amountRow('COACHING FEE',pngMoney(coachingFee),930);
+    amountRow('COURT RENTAL',courtDisplay,980);
+    ctx.strokeStyle='#363636';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(110,1004);ctx.lineTo(970,1004);ctx.stroke();
+    amountRow('TOTAL AMOUNT DUE',pngMoney(totalDue),1053,true);
+    amountRow('ALREADY PAID',pngMoney(paid),1107);
+    amountRow('BALANCE DUE',pngMoney(balance),1154);
+    ctx.fillStyle='#FFD600';ctx.font='900 20px Arial';ctx.fillText('COACH KAZU',72,1230);
+    ctx.fillStyle='#ccc';ctx.font='700 18px Arial';ctx.fillText('Pickleball Coaching • Santiago City',245,1230,760);
+    ctx.fillStyle='#999';ctx.font='700 16px Arial';
+    ctx.fillText('Please message Coach Kazu on Facebook for changes or questions.',72,1267,936);
+    ctx.textAlign='center';ctx.fillStyle='#666';ctx.font='700 13px Arial';
+    ctx.fillText('© 2026 XBALANCED DIGITAL SOLUTIONS',540,1322);
+    ctx.textAlign='left';
     confirmationBlob=await canvasToBlob(canvas);
-    const dlg=$('#bookingConfirmationDialog');if(dlg.open)dlg.close();dlg.showModal();
+    const dialog=$('#bookingConfirmationDialog');if(dialog.open)dialog.close();dialog.showModal();
   }catch(e){toast(e.message||'Could not create confirmation card.')}
 }
 function opsBlobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Could not prepare image.'));r.readAsDataURL(blob)})}
