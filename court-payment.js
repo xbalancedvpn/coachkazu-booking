@@ -162,6 +162,12 @@
     button.disabled = true;
     button.textContent = 'Saving…';
     try {
+      var history = await db.from('booking_payments').select('court_amount').eq('booking_id', activeId);
+      if (history.error) throw history.error;
+      var received = (history.data || []).reduce(function (sum, p) { return sum + Number(p.court_amount || 0); }, 0);
+      if (received > (court.paid && court.charge ? court.amount : 0) + .001) {
+        throw new Error('Court payment already collected: ' + peso(received) + '. Court charge cannot be lowered below the collected amount.');
+      }
       var reply = await db.from('bookings').update({ court_paid_by_coach: court.paid, court_paid_amount: court.amount, court_charge_client: court.charge }).eq('id', activeId).select('id,court_paid_by_coach,court_paid_amount,court_charge_client').single();
       if (reply.error) throw reply.error;
       Object.assign(record, reply.data);
