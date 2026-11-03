@@ -176,6 +176,7 @@
       updateBills();
       notify('Court payment saved to this booking.');
       window.dispatchEvent(new CustomEvent('coach:data-changed', { detail: { type: 'court-payment', bookingId: activeId } }));
+      setTimeout(function () { location.reload(); }, 750);
     } catch (error) {
       notify(error.message || 'Could not save court amount.');
     } finally {
