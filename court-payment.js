@@ -3,9 +3,6 @@
   'use strict';
   var db = window.coachKazuDb;
   if (!db) return;
-  var MARK_OPEN = '[[KAZU_COURT_V1]]';
-  var MARK_CLOSE = '[[/KAZU_COURT_V1]]';
-  var MARK_RE = /\s*\[\[KAZU_COURT_V1\]\]([\s\S]*?)\[\[\/KAZU_COURT_V1\]\]/g;
   var records = new Map();
   var activeId = null, paymentId = null, completionId = null;
   var loading = false, pending = false, refreshTimer = null;
@@ -18,31 +15,12 @@
     toast.classList.add('show');
     setTimeout(function () { toast.classList.remove('show'); }, 3100);
   }
-  function dataFromNotes(notes) {
-    var text = String(notes || '');
-    var match = text.match(/\[\[KAZU_COURT_V1\]\]([\s\S]*?)\[\[\/KAZU_COURT_V1\]\]/);
-    if (!match) return { paid: false, amount: 0, charge: false };
-    try {
-      var data = JSON.parse(match[1]);
-      var amount = Number(data.amount);
-      return {
-        paid: data.paid === true,
-        amount: Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) / 100 : 0,
-        charge: data.charge === true
-      };
-    } catch (_) {
-      return { paid: false, amount: 0, charge: false };
-    }
-  }
-  function notesWithCourt(original, court) {
-    var notes = String(original || '').replace(MARK_RE, '').trimEnd();
-    if (!court.paid) return notes || null;
-    var tag = MARK_OPEN + JSON.stringify({ paid: true, amount: court.amount, charge: court.charge }) + MARK_CLOSE;
-    return (notes ? notes + '\n' : '') + tag;
+  function dataFromRecord(b) {
+    return { paid: b?.court_paid_by_coach===true, amount: Number(b?.court_paid_amount||0), charge: b?.court_charge_client===true };
   }
   function courtAmount(record) {
     if (!record) return 0;
-    var court = dataFromNotes(record.notes);
+    var court = dataFromRecord(record);
     return court.paid && court.charge ? court.amount : 0;
   }
   function totalBill(record) {
@@ -60,7 +38,7 @@
       var id = cardBookingId(card);
       var record = records.get(String(id));
       if (!id || !record) return;
-      var court = dataFromNotes(record.notes);
+      var court = dataFromRecord(record);
       var actions = card.querySelector('.card-actions');
       if (!actions) return;
       var btn = actions.querySelector('[data-kazu-court-edit]');
@@ -95,7 +73,7 @@
     if (loading) { pending = true; return; }
     loading = true;
     try {
-      var reply = await db.from('bookings').select('id,notes,total_amount').eq('status', 'confirmed').limit(400);
+      var reply = await db.from('bookings').select('id,total_amount,court_paid_by_coach,court_paid_amount,court_charge_client').eq('status', 'confirmed').limit(400);
       if (reply.error) throw reply.error;
       records.clear();
       (reply.data || []).forEach(function (record) { records.set(String(record.id), record); });
@@ -160,7 +138,7 @@
     if (!record) { notify('Booking not found.'); return; }
     makeDialog();
     activeId = String(id);
-    var court = dataFromNotes(record.notes);
+    var court = dataFromRecord(record);
     byId('kazuCourtPaid').checked = court.paid;
     byId('kazuCourtAmount').value = court.paid ? String(court.amount) : '';
     byId('kazuCourtCharge').checked = court.paid ? court.charge : true;
@@ -184,9 +162,9 @@
     button.disabled = true;
     button.textContent = 'Saving…';
     try {
-      var reply = await db.from('bookings').update({ notes: notesWithCourt(record.notes, court) }).eq('id', activeId).select('id,notes').single();
+      var reply = await db.from('bookings').update({ court_paid_by_coach: court.paid, court_paid_amount: court.amount, court_charge_client: court.charge }).eq('id', activeId).select('id,court_paid_by_coach,court_paid_amount,court_charge_client').single();
       if (reply.error) throw reply.error;
-      record.notes = reply.data.notes;
+      Object.assign(record, reply.data);
       byId('kazuCourtPaymentDialog').close();
       renderCards();
       updateBills();
@@ -203,7 +181,7 @@
     var target = byId(targetId), record = records.get(String(id));
     if (!target) return;
     if (!record) { target.hidden = true; return; }
-    var court = dataFromNotes(record.notes);
+    var court = dataFromRecord(record);
     if (!court.paid) { target.hidden = true; return; }
     var bill = totalBill(record);
     target.hidden = false;
@@ -214,8 +192,8 @@
     breakdown.textContent = 'Coaching ' + peso(record.total_amount) + ' + Court ' + peso(courtAmount(record));
     var foot = document.createElement('small');
     foot.textContent = court.charge
-      ? 'Court charge is for client collection only. Record only coaching payments in the existing payment field; court is excluded from income and TIP.'
-      : 'Court was paid by Coach but is NOT billed to the client. No court amount is added to income.';
+      ? 'Court collection is recorded separately from coaching income and TIP.'
+      : 'Not charged to the client. No court amount is added to income.';
     target.append(heading, breakdown, foot);
   }
   function ensureBill(dialogId, summaryId, mountSelector) {
