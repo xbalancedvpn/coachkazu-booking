@@ -9,6 +9,19 @@ const skillDefs=[['serve','Serve'],['return_score','Return'],['forehand','Foreha
 function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');setTimeout(()=>x.classList.remove('show'),2800)}
 function esc(s){return String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function money(n){return `₱${Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+
+function getCourtEntry(prefix){
+ const paid=$('#'+prefix+'CourtPaid')?.checked===true,raw=$('#'+prefix+'CourtAmount')?.value||'',num=Number(raw),charge=paid&&$('#'+prefix+'CourtCharge')?.checked===true;
+ return {paid,amount:paid?Math.round(num*100)/100:0,charge,valid:!paid||(raw.trim()!==''&&Number.isFinite(num)&&num>0&&Math.abs(num*100-Math.round(num*100))<0.00001)};
+}
+function refreshCourtEntry(prefix){
+ const c=getCourtEntry(prefix),detail=$('#'+prefix+'CourtDetails'),box=$('#'+prefix+'CourtPreview'),fee=Number($(prefix==='confirm'?'#confirmAmount':'#manualBookingAmount')?.value||0);
+ if(detail)detail.hidden=!c.paid;
+ const cost=c.charge&&c.valid?c.amount:0;
+ if(box)box.innerHTML='<div><span>Coaching Fee</span><strong>'+money(fee)+'</strong></div><div><span>Court Charge</span><strong>'+money(cost)+'</strong></div><div class="kazu-court-total"><span>Client Total Amount Due</span><strong>'+money(fee+cost)+'</strong></div>';
+}
+function resetCourtEntry(prefix){$('#'+prefix+'CourtPaid').checked=false;$('#'+prefix+'CourtAmount').value='';$('#'+prefix+'CourtCharge').checked=true;refreshCourtEntry(prefix);}
+for(const prefix of ['confirm','manual'])for(const key of ['Paid','Amount','Charge'])$('#'+prefix+'Court'+key)?.addEventListener('input',()=>{refreshCourtEntry(prefix);if(prefix==='manual')updateManualBookingSummary()});
 function courtCharge(b){return b?.court_paid_by_coach&&b?.court_charge_client?Number(b.court_paid_amount||0):0}
 function clientDue(b){return Number(b.total_amount||0)+courtCharge(b)}
 function remainingCourt(b){return Math.max(0,courtCharge(b)-(courtPaymentTotals.get(b.id)||0))}
@@ -252,8 +265,9 @@ async function loadInquiries(){
   });
 }
 async function setInquiry(id,status){const {error}=await db.from('inquiries').update({status}).eq('id',id);if(error)return toast(error.message);toast(`Inquiry marked ${status}.`);await loadInquiries();window.dispatchEvent(new CustomEvent('coach:data-changed',{detail:{type:'inquiry-status',inquiryId:id,status}}))}
-function openConfirm(i){activeInquiry=i;$('#confirmTitle').textContent=i.client_name;$('#confirmMeta').innerHTML=`${esc(i.preferred_date)} • ${hour(i.start_hour)}–${hour(i.end_hour)}<br>${i.participant_count||1} player${Number(i.participant_count||1)>1?'s':''} • ${esc(i.coaching_type||'Coaching session')}<br><strong>Court:</strong> ${esc(courtFromSource(i)||'Not specified')}<br>${esc(i.contact||'No contact')}`;$('#confirmAmount').value=Number(i.quoted_rate||0);$('#confirmNote').value='';$('#confirmDialog').showModal()}
+function openConfirm(i){activeInquiry=i;$('#confirmTitle').textContent=i.client_name;$('#confirmMeta').innerHTML=`${esc(i.preferred_date)} • ${hour(i.start_hour)}–${hour(i.end_hour)}<br>${i.participant_count||1} player${Number(i.participant_count||1)>1?'s':''} • ${esc(i.coaching_type||'Coaching session')}<br><strong>Court:</strong> ${esc(courtFromSource(i)||'Not specified')}<br>${esc(i.contact||'No contact')}`;$('#confirmAmount').value=Number(i.quoted_rate||0);$('#confirmNote').value='';resetCourtEntry('confirm');$('#confirmDialog').showModal()}
 $('#confirmBookingBtn').onclick=confirmBooking;
+$('#confirmAmount')?.addEventListener('input',()=>refreshCourtEntry('confirm'));
 async function findOrCreateClient(p){const full=String(p.full_name||`${p.first_name||''} ${p.last_name||''}`).trim().replace(/\s+/g,' '),contact=p.contact||null;let q=db.from('clients').select('*').ilike('full_name',full).eq('is_active',true);if(contact)q=q.eq('contact',contact);const {data:found}=await q.limit(1);if(found?.length)return found[0];const n=splitFullName(full),payload={first_name:p.first_name||n.first,last_name:p.last_name||n.last,full_name:full,name_key:full.toLowerCase(),contact,contact_key:contact?String(contact).trim().toLowerCase():null,is_active:true};const {data,error}=await db.from('clients').insert(payload).select('*').single();if(error)throw error;return data}
 async function confirmBooking(){
   if(confirmBookingInFlight)return;
@@ -262,7 +276,12 @@ async function confirmBooking(){
   const confirmBtn=$('#confirmBookingBtn');
   const oldConfirmText=confirmBtn?.textContent||'Confirm Booking';
   if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent='Confirming…'}
-  const amount=Number($('#confirmAmount').value||0);
+  const amount=Number($('#confirmAmount').value||0),newCourt=getCourtEntry('confirm');
+  if(!Number.isFinite(amount)||amount<0||!newCourt.valid){
+   toast('Enter valid coaching and court amounts.');confirmBookingInFlight=false;
+   if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent=oldConfirmText}
+   return;
+  }
   if(i.start_hour==null||i.end_hour==null||!i.preferred_date){
     toast('Inquiry has incomplete schedule details.');
     confirmBookingInFlight=false;
@@ -306,6 +325,7 @@ async function confirmBooking(){
       session_date:i.preferred_date,start_hour:i.start_hour,end_hour:i.end_hour,client_name:i.client_name,contact:i.contact,
       participant_count:pc,coaching_type:i.coaching_type||`${pc} Player${pc>1?'s':''}`,rate_mode:'standard',
       rate_per_person:pc?amount/pc:amount,total_amount:amount,court_name:courtFromSource(i)||null,
+       court_paid_by_coach:newCourt.paid,court_paid_amount:newCourt.amount,court_charge_client:newCourt.charge,
       notes:$('#confirmNote').value.trim()||i.notes||null,status:'confirmed',session_status:'scheduled'
     }).select('id').single();
     if(error)throw error;
@@ -591,12 +611,15 @@ function syncManualAutoRate(force=false){
 function updateManualBookingSummary(){
   const box=$('#manualBookingSummary');if(!box)return;
   const name=$('#manualBookingName')?.value.trim()||'Client',date=$('#manualBookingDate')?.value||'No date',s=$('#manualBookingStart')?.value,e=$('#manualBookingEnd')?.value,n=Number($('#manualBookingPlayers')?.value||1),amount=Number($('#manualBookingAmount')?.value||0),pay=Number($('#manualBookingPayment')?.value||0),dur=manualBookingDuration(),court=manualCourtValue();
-  box.innerHTML=`<strong>${esc(name)}</strong><br>${esc(date)} • ${s&&e?hour(Number(s))+'–'+hour(Number(e)):'Choose time'} • ${dur||0} hour${dur===1?'':'s'}<br>${n} player${n>1?'s':''} • Court: ${esc(court||'Not selected')}<br>${money(amount)} coaching fee${pay>0?' • '+money(pay)+' payment now':''}`;
+  const courtInfo=getCourtEntry('manual'),clientCourt=courtInfo.charge&&courtInfo.valid?courtInfo.amount:0;
+  box.innerHTML=`<strong>${esc(name)}</strong><br>${esc(date)} • ${s&&e?hour(Number(s))+'–'+hour(Number(e)):'Choose time'} • ${dur||0} hour${dur===1?'':'s'}<br>${n} player${n>1?'s':''} • Court: ${esc(court||'Not selected')}<br>${money(amount)} coaching fee${courtInfo.paid?' • '+money(courtInfo.amount)+' paid by Coach':''}${pay>0?' • '+money(pay)+' coaching payment now':''}<br><strong>Client Total Amount Due: ${money(amount+clientCourt)}</strong>`;
+  refreshCourtEntry('manual');
 }
 async function openManualBooking(prefill=null){
   const dlg=$('#manualBookingDialog');if(!dlg)return;
   refreshManualClientOptions();buildManualPlayerOptions();
   $('#manualBookingForm').reset();
+  resetCourtEntry('manual');
   $('#manualBookingClient').value='';
   const now=ymd(new Date());
   $('#manualBookingDate').removeAttribute('min');
@@ -640,7 +663,8 @@ async function saveManualBooking(e){
     players=Math.max(1,Number($('#manualBookingPlayers').value)||1),
     court=manualCourtValue(),
     amount=Number($('#manualBookingAmount').value||0),
-    payment=Number($('#manualBookingPayment').value||0);
+    payment=Number($('#manualBookingPayment').value||0),newCourt=getCourtEntry('manual');
+  if(!newCourt.valid)return toast('Enter a valid court amount.');
   if(name.length<2)return toast('Enter the client name.');
   if(!court)return toast('Select a court or enter the court name.');
   if(!date||!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return toast('Choose a valid date and time.');
@@ -675,6 +699,9 @@ async function saveManualBooking(e){
       rate_mode:manualBookingState.rateOverridden?'custom':'standard',
       rate_per_person:players?amount/players:amount,
       total_amount:amount,
+      court_paid_by_coach:newCourt.paid,
+      court_paid_amount:newCourt.amount,
+      court_charge_client:newCourt.charge,
       court_name:court,
       notes:$('#manualBookingNote').value.trim()||null,
       status:'confirmed',
