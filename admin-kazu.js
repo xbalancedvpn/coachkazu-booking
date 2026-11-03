@@ -471,7 +471,7 @@ async function loadPaymentFollowups(){
     const total=clientDue(b),bal=Math.max(0,total-b.paid),state=b.paid>0?'Partial':'Unpaid',early=wasCompletedEarly(b);
     return `<article class="card payment-followup-card" id="payment-followup-${b.id}"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(total)} total<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}<br>${money(b.paid)} paid • <strong>${money(bal)} due</strong></div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment ${state.toLowerCase()}">${state}</span></div></div><div class="card-actions"><button class="mini confirm" data-followup-payment="${b.id}">Record Remaining Payment</button><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
   }).join(''):'<div class="empty">No completed sessions need payment follow-up.</div>';
-  rows.forEach(b=>document.querySelector(`[data-followup-payment="${b.id}"]`)?.addEventListener('click',()=>{paymentTotals.set(b.id,b.paid);openPayment(b)}));
+  rows.forEach(b=>document.querySelector(`[data-followup-payment="${b.id}"]`)?.addEventListener('click',()=>{openPayment(b)}));
   applyListPreview('#paymentFollowupList','.payment-followup-card','#togglePaymentFollowups','payment');
 }
 
@@ -499,7 +499,7 @@ async function loadCompletedSessions(){
     const early=wasCompletedEarly(b);
     return `<article class="card completed-session-card"><div class="card-top"><div><h3>${esc(b.client_name)}</h3><div class="meta">${esc(b.session_date)} • ${hour(b.start_hour)}–${hour(b.end_hour)}<br>${b.participant_count||1} player${Number(b.participant_count||1)>1?'s':''} • ${money(clientDue(b))} collected<br><strong>Court:</strong> ${esc(b.court_name||'Not specified')}</div></div><div class="tag-stack"><span class="tag ${early?'completed-early':''}">${early?'Completed Early':'Completed'}</span><span class="tag payment paid">Paid</span></div></div><div class="card-actions"><button class="mini tip-action" data-completed-tip="${b.id}">+ Add Tip</button><button class="mini confirm-card" data-confirmation="${b.id}">Confirmation PNG</button></div></article>`;
   }).join(''):'<div class="empty">No fully settled completed sessions yet.</div>';
-  rows.forEach(b=>document.querySelectorAll(`[data-completed-tip="${b.id}"]`).forEach(btn=>btn.onclick=()=>{paymentTotals.set(b.id,b.paid);openPayment(b,true)}));
+  rows.forEach(b=>document.querySelectorAll(`[data-completed-tip="${b.id}"]`).forEach(btn=>btn.onclick=()=>{openPayment(b,true)}));
   applyListPreview('#completedSessionsList','.completed-session-card','#toggleCompletedSessions','completed');
 }
 $('#savePaymentBtn').onclick=savePayment;
