@@ -2,7 +2,7 @@
 const URL='https://vqtrpvtedhhekdrmktgq.supabase.co',KEY='sb_publishable_Ywa22K1DwZfDHMDwXDYU6A_dRvRUHjo';
 const db=window.coachKazuDb||(window.coachKazuDb=window.supabase.createClient(URL,KEY)),$=s=>document.querySelector(s);
 const skills=[['serve','Serve'],['return_score','Return'],['forehand','Forehand'],['backhand','Backhand'],['dinking','Dinking'],['footwork','Footwork'],['positioning','Positioning'],['consistency','Consistency'],['strategy','Strategy'],['confidence','Confidence']];
-let active=null,participants=[],drafts=new Map(),selectedClientId=null,paidBefore=0,balanceBefore=0;
+let active=null,participants=[],drafts=new Map(),selectedClientId=null,paidBefore=0,balanceBefore=0,courtBefore=0,courtBalance=0;
 const money=n=>'₱'+Number(n||0).toLocaleString('en-PH');
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hour=h=>`${h%12||12}:00 ${h<12?'AM':'PM'}`;
@@ -16,15 +16,15 @@ async function openWorkflow(id){try{
   const [{data:b,error:be},{data:parts,error:pe},{data:pays,error:payErr}]=await Promise.all([
     db.from('bookings').select('*').eq('id',id).single(),
     db.from('booking_participants').select('client_id,full_name,participant_order,is_primary').eq('booking_id',id).order('participant_order'),
-    db.from('booking_payments').select('amount').eq('booking_id',id)
+    db.from('booking_payments').select('amount,court_amount').eq('booking_id',id)
   ]);
   if(be)throw be;if(pe)throw pe;if(payErr)throw payErr;
-  active=b;participants=(parts||[]).filter(p=>p.client_id);drafts=new Map();paidBefore=(pays||[]).reduce((s,x)=>s+Number(x.amount||0),0);balanceBefore=Math.max(0,Number(b.total_amount||0)-paidBefore);
+  active=b;participants=(parts||[]).filter(p=>p.client_id);drafts=new Map();paidBefore=(pays||[]).reduce((s,x)=>s+Number(x.amount||0),0);courtBefore=(pays||[]).reduce((s,x)=>s+Number(x.court_amount||0),0);balanceBefore=Math.max(0,Number(b.total_amount||0)-paidBefore);courtBalance=Math.max(0,(b.court_paid_by_coach&&b.court_charge_client?Number(b.court_paid_amount||0):0)-courtBefore);
   $('#postSessionTitle').textContent=b.client_name;
   $('#postSessionMeta').innerHTML=`${b.session_date} • ${hour(b.start_hour)}–${hour(b.end_hour)} • ${b.participant_count} player${b.participant_count>1?'s':''}`;
-  $('#postTotal').textContent=money(b.total_amount);$('#postPaid').textContent=money(paidBefore);$('#postBalance').textContent=money(balanceBefore);$('#postPlayers').textContent=String(b.participant_count||participants.length||1);
-  $('#postOutcome').value=b.session_outcome_note||'';$('#postPaymentAmount').value='';$('#postPaymentAmount').max=balanceBefore;$('#postPaymentMethod').value='Cash';$('#postPaymentDate').value=ymd(new Date());
-  const alertEl=$('#postBalanceAlert');alertEl.className='post-balance-alert'+(balanceBefore<=0?' paid':'');alertEl.textContent=balanceBefore<=0?'Payment status: Fully paid.':'Payment status: '+money(balanceBefore)+' remaining. You can record a payment now or leave it blank.';
+  $('#postTotal').textContent=money(Number(b.total_amount||0)+(b.court_paid_by_coach&&b.court_charge_client?Number(b.court_paid_amount||0):0));$('#postPaid').textContent=money(paidBefore+courtBefore);$('#postBalance').textContent=money(balanceBefore+courtBalance);$('#postPlayers').textContent=String(b.participant_count||participants.length||1);
+  $('#postOutcome').value=b.session_outcome_note||'';$('#postPaymentAmount').value='';$('#postPaymentAmount').max=balanceBefore;$('#postCourtPaymentWrap').hidden=!(b.court_paid_by_coach&&b.court_charge_client);$('#postCourtPaymentAmount').value='';$('#postCourtPaymentAmount').max=courtBalance;$('#postPaymentMethod').value='Cash';$('#postPaymentDate').value=ymd(new Date());
+  const alertEl=$('#postBalanceAlert');alertEl.className='post-balance-alert'+(balanceBefore+courtBalance<=0?' paid':'');alertEl.textContent=balanceBefore+courtBalance<=0?'Payment status: Fully paid.':'Payment status: '+money(balanceBefore+courtBalance)+' remaining (coaching '+money(balanceBefore)+' + court '+money(courtBalance)+'). You can record a payment now or leave it blank.';
   $('#postPlayerSelect').innerHTML=participants.length?participants.map(p=>`<option value="${p.client_id}">${p.full_name}</option>`).join(''):'<option value="">No linked player profile</option>';
   selectedClientId=participants[0]?.client_id||null;loadDraft(selectedClientId);buildSkills();loadDraft(selectedClientId);$('#postSessionDialog').showModal();
 }catch(e){toast(e.message||'Could not open session workflow.')}} 
@@ -34,13 +34,14 @@ $('#queuePlayerProgress')?.addEventListener('click',()=>{readCurrentDraft();toas
 $('#clearPlayerProgress')?.addEventListener('click',()=>{if(selectedClientId)drafts.delete(selectedClientId);resetSkillButtons();$('#postProgressNote').value='';renderDraftStatus()});
 $('#closePostSession')?.addEventListener('click',()=>$('#postSessionDialog').close());
 $('#cancelPostSession')?.addEventListener('click',()=>$('#postSessionDialog').close());
-$('#completeSessionBtn')?.addEventListener('click',async()=>{if(!active)return;readCurrentDraft();const amount=Number($('#postPaymentAmount').value||0);if(amount<0)return toast('Payment amount cannot be negative.');if(amount>balanceBefore)return toast('Payment cannot exceed remaining balance.');if(amount>0&&!$('#postPaymentMethod').value)return toast('Choose a payment method.');
+$('#completeSessionBtn')?.addEventListener('click',async()=>{if(!active)return;readCurrentDraft();const amount=Number($('#postPaymentAmount').value||0),courtAmount=Number($('#postCourtPaymentAmount').value||0);if(!Number.isFinite(courtAmount)||courtAmount<0||courtAmount>courtBalance)return toast('Invalid court payment amount.');if(amount<0)return toast('Payment amount cannot be negative.');if(amount>balanceBefore)return toast('Payment cannot exceed remaining balance.');if((amount>0||courtAmount>0)&&!$('#postPaymentMethod').value)return toast('Choose a payment method.');
   const btn=$('#completeSessionBtn'),old=btn.textContent;btn.disabled=true;btn.textContent='Saving…';
   try{
-    const {data,error}=await db.rpc('complete_session_v2',{
+    const {data,error}=await db.rpc('complete_session_v3',{
       p_booking_id:active.id,
       p_outcome_note:$('#postOutcome').value.trim()||null,
       p_payment_amount:amount,
+      p_court_payment_amount:courtAmount,
       p_payment_method:amount>0?$('#postPaymentMethod').value:null,
       p_payment_date:$('#postPaymentDate').value||ymd(new Date()),
       p_progress_entries:[...drafts.values()]
@@ -48,7 +49,7 @@ $('#completeSessionBtn')?.addEventListener('click',async()=>{if(!active)return;r
     if(error)throw error;
     $('#postSessionDialog').close();
     const progressCount=Number(data?.progress_saved_count||0),remaining=Number(data?.remaining_balance||0);
-    toast(`Session completed${progressCount?' • '+progressCount+' progress update'+(progressCount>1?'s':''):''}${amount>0?' • payment recorded':''}${remaining>0?' • '+money(remaining)+' due':''}`);
+    toast(`Session completed${progressCount?' • '+progressCount+' progress update'+(progressCount>1?'s':''):''}${amount+courtAmount>0?' • payment recorded':''}${remaining>0?' • '+money(remaining)+' due':''}`);
     setTimeout(()=>location.reload(),900);
   }catch(e){toast(e.message||'Could not complete session.')}finally{btn.disabled=false;btn.textContent=old}
 });
